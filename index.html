@@ -1,0 +1,4906 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <title>寶可夢副本遊戲首頁</title>
+  <style>
+    /* ==========================================================================
+   1. 全局設計變數 (Design Tokens)
+   ========================================================================== */
+:root {
+  /* 系統色彩 */
+  --bg-primary: #121824;
+  --bg-surface: #1e293b;
+  --bg-surface-dark: #0f172a;
+  --bg-card: rgba(255, 255, 255, 0.08);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --border-color-hover: rgba(255, 255, 255, 0.2);
+  
+  /* 文字色彩 */
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-highlight: #38bdf8;
+  --text-gold: #fbbf24;
+
+  /* 屬性色彩 (Dungeon Elements) */
+  --elem-event: #c084fc;
+  --elem-fire: #fca5a5;
+  --elem-earth: #86efac;
+  --elem-water: #93c5fd;
+  --elem-wind: #fde047;
+
+  /* 稀有度色彩 (Rarity System) */
+  --rarity-white: #cbd5e1;
+  --rarity-blue: #38bdf8;
+  --rarity-purple: #c084fc;
+  --rarity-gold: #facc15;
+  --rarity-red: #ef4444;
+
+  /* 層級架構 (Z-Index Hierarchy) */
+  --z-header: 10;
+  --z-modal: 1000;
+  --z-game: 2000;
+  --z-upgrade: 2000;
+  --z-settlement: 9999;
+
+  /* 邊角與過渡 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================================================
+   2. 基礎重置與全局設定 (Reset & Base Styles)
+   ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  color-scheme: dark;
+  font-size: 16px;
+
+  /* 防止 Android WebView 過度滾動 */
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+
+  /* 允許垂直觸控滑動 */
+  touch-action: pan-y;
+}
+
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+
+  height: 100vh;
+  height: 100dvh;
+
+  overflow: hidden;
+
+  display: flex;
+  flex-direction: column;
+
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* ★ 防止 WebView 下拉/上拉 overscroll */
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+
+  /* ★ 允許正常上下滑動 */
+  touch-action: pan-y;
+}
+
+
+/* 自訂滑動條樣式 */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.15);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* ==========================================================================
+   3. 頂部資源列 (Resources Bar)
+   ========================================================================== */
+.resources-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, auto);
+  background: rgba(30, 41, 59, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+  padding: 8px 12px;
+  gap: 8px 4px;
+  z-index: var(--z-header);
+}
+
+.resource-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.resource-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* ==========================================================================
+   4. 主頁面佈局 (Home Layout & Dungeons)
+   ========================================================================== */
+.home-container {
+  flex: 1;
+  min-height: 0;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  padding: 16px;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  /* ★ 關鍵 */
+  overscroll-behavior-y: contain;
+
+  /* ★ Android / WebView */
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+
+.top-spacer {
+  height: 0.5vh;
+}
+
+.dungeon-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.dungeon-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: transform var(--transition-fast), background var(--transition-normal);
+  min-height: 80px;
+}
+
+.dungeon-card:active {
+  transform: scale(0.98);
+}
+
+.dungeon-card.event-card {
+  grid-column: span 2;
+  padding: 14px 20px;
+}
+
+/* 副本屬性色彩漸層 */
+.dungeon-card.event {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(147, 51, 234, 0.2));
+  border-color: var(--elem-event);
+}
+.dungeon-card.fire {
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.4), rgba(220, 38, 38, 0.2));
+  border-color: var(--elem-fire);
+}
+.dungeon-card.earth {
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.4), rgba(22, 163, 74, 0.2));
+  border-color: var(--elem-earth);
+}
+.dungeon-card.water {
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.4), rgba(37, 99, 235, 0.2));
+  border-color: var(--elem-water);
+}
+.dungeon-card.wind {
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.4), rgba(202, 138, 4, 0.2));
+  border-color: var(--elem-wind);
+}
+
+.dungeon-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dungeon-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.dungeon-timer {
+  font-size: 11px;
+  color: #fef08a;
+  font-weight: 500;
+}
+
+.dungeon-icon {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
+}
+
+/* 底部選單 */
+.bottom-menu {
+  display: grid;
+
+  /* ★ 三個按鈕左右排列 */
+  grid-template-columns: repeat(3, 1fr);
+
+  gap: 12px;
+
+  /* ★ 三個按鈕一排，所以高度降低 */
+  height: 70px;
+
+  margin-top: 15px;
+}
+
+
+.menu-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  color: var(--text-primary);
+
+  font-size: 13px;
+  font-weight: 600;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  transition:
+    background var(--transition-fast),
+    transform var(--transition-fast);
+
+  /* 防止文字太長造成按鈕異常 */
+  white-space: nowrap;
+}
+
+
+.menu-btn:active {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(0.97);
+}
+
+/* ==========================================================================
+   5. 通用覆蓋彈窗與標籤 (Modal Overlays & Tabs)
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background-color: var(--bg-primary);
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top, 16px);
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal) ease;
+  will-change: opacity;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-header {
+  padding: 16px 20px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.back-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.back-btn:active {
+  background: #dc2626;
+}
+
+/* 動態標籤頁 */
+.tab-bar {
+  display: flex;
+  background: var(--bg-surface);
+  border-bottom: 1px solid #334155;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 12px 10px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.tab-btn.active {
+  color: var(--text-highlight);
+  border-bottom-color: var(--text-highlight);
+}
+
+/* 可滑動內容區 */
+.modal-content {
+  flex: 1;
+  min-height: 0;
+
+  padding: 16px;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  -webkit-overflow-scrolling: touch;
+
+  /* ★ 防止滑到頂部後繼續把手勢傳給 WebView */
+  overscroll-behavior-y: contain;
+
+  touch-action: pan-y;
+
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   6. 寶可夢卡片與稀有度光暈 (Pokemon Cards & Rarity)
+   ========================================================================== */
+.pokemon-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.pokemon-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 2px solid #334155;
+  position: relative;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+
+.pokemon-card:active {
+  transform: scale(0.96);
+}
+
+.pokemon-img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  transition: filter var(--transition-normal);
+}
+
+.pokemon-card.locked .pokemon-img {
+  filter: grayscale(100%) brightness(0.25) opacity(0.5);
+}
+
+.pokemon-name {
+  font-size: 12px;
+  margin-top: 6px;
+  color: #e2e8f0;
+  text-align: center;
+}
+
+.mega-icon-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  z-index: 2;
+}
+
+/* 稀有度邊框色系 */
+.rarity-white { border-color: var(--rarity-white) !important; box-shadow: 0 0 10px rgba(203, 213, 225, 0.4); }
+.rarity-blue  { border-color: var(--rarity-blue) !important; box-shadow: 0 0 12px rgba(56, 189, 248, 0.6); }
+.rarity-purple{ border-color: var(--rarity-purple) !important; box-shadow: 0 0 12px rgba(192, 132, 252, 0.6); }
+.rarity-gold  { border-color: var(--rarity-gold) !important; box-shadow: 0 0 14px rgba(250, 204, 21, 0.7); }
+.rarity-red   { border-color: var(--rarity-red) !important; box-shadow: 0 0 14px rgba(239, 68, 68, 0.7); }
+.rarity-rainbow {
+  border-image: linear-gradient(135deg, #f43f5e, #fb923c, #facc15, #4ade80, #38bdf8, #c084fc) 1 !important;
+  box-shadow: 0 0 16px rgba(244, 63, 94, 0.8);
+}
+
+/* 層數選擇清單樣式 */
+.floor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.floor-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid #334155;
+  cursor: pointer;
+  transition: background var(--transition-normal);
+}
+
+.floor-card.locked {
+  background: #111827;
+  border-color: #1f2937;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.floor-card:not(.locked):active {
+  background: #334155;
+}
+
+.floor-info {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.floor-status {
+  font-size: 13px;
+  color: var(--text-highlight);
+}
+
+.floor-card.locked .floor-status {
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   7. 獨立強化彈窗 (Upgrade Dialog)
+   ========================================================================== */
+.upgrade-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background-color: rgba(18, 24, 36, 0.85);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: var(--z-upgrade);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal) ease;
+}
+
+.upgrade-dialog-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.upgrade-modal-container {
+  background: linear-gradient(145deg, var(--bg-surface), var(--bg-surface-dark));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xl);
+  width: 90%;
+  max-width: 420px;
+  overflow: hidden;
+  color: #f8fafc;
+  animation: modalPopUp 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes modalPopUp {
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.upgrade-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.upgrade-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #f1f5f9;
+}
+
+.upgrade-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: var(--text-secondary);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.upgrade-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+}
+
+.upgrade-modal-body {
+  padding: 20px;
+}
+
+.upgrade-showcase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.upgrade-avatar-wrapper {
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius-lg);
+  background: rgba(15, 23, 42, 0.8);
+  border: 2px solid #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.upgrade-avatar-wrapper img {
+  width: 76px;
+  height: 76px;
+  object-fit: contain;
+}
+
+.upgrade-badge-star {
+  margin-top: 8px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+}
+
+.upgrade-rows-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.upgrade-row-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background var(--transition-fast);
+}
+
+.upgrade-row-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.upgrade-info-side {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.upgrade-label-main {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.highlight-level {
+  color: var(--text-highlight);
+  font-weight: 700;
+}
+
+.max-limit {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.upgrade-cost-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.cost-num {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.game-action-btn {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  color: #fff;
+  transition: transform var(--transition-fast), filter var(--transition-fast);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.game-action-btn:active {
+  transform: scale(0.96);
+}
+
+.btn-exp { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+.btn-coin { background: linear-gradient(135deg, #10b981, #059669); }
+.btn-star { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.btn-mega { background: linear-gradient(135deg, #a855f7, #7e22ce); }
+
+.game-action-btn:disabled {
+  background: #334155 !important;
+  color: var(--text-muted) !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ==========================================================================
+   8. 編隊 Modal 樣式 (Team Formation)
+   ========================================================================== */
+
+/* 1. Modal 主容器：改為 Flex 直向佈局，並限制最大高度 */
+.battle-team-content {
+  max-width: 600px;
+  width: 90%;
+  max-height: 85vh; /* 限制最高佔螢幕 85%，避免太長超出螢幕 */
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+  overflow: hidden; /* 防止外層出現雙滾動條 */
+}
+
+/* 2. 標題列與按鈕區塊 */
+.battle-team-content .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0; /* 標題不隨內容壓縮 */
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 12px;
+}
+
+.modal-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* 3. 頂部固定區（隊伍 Slots + 屬性標籤） */
+.battle-team-fixed-top {
+  flex-shrink: 0; /* 確保列表滾動時，頂部區塊固定不被壓縮 */
+}
+
+.selected-team-container {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+}
+
+.section-subtitle {
+  font-size: 14px;
+  color: #ccc;
+  margin-bottom: 8px;
+}
+
+.team-slots-wrapper {
+  display: flex;
+  gap: 10px;
+  justify-content: space-around;
+}
+
+.team-slot {
+  width: 60px;
+  height: 60px;
+  border: 2px dashed #666;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.05);
+  transition: border-color var(--transition-fast, 0.2s), background var(--transition-fast, 0.2s);
+}
+
+.team-slot.occupied {
+  border: 2px solid #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.team-slot .slot-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.team-slot .slot-name {
+  font-size: 10px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55px;
+}
+
+.team-slot .slot-placeholder {
+  font-size: 11px;
+  color: #888;
+}
+
+.team-slot .remove-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ff4d4d;
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+/* 4. 屬性標籤列（水平滾動支援） */
+#battleTeamTabBar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  scrollbar-width: thin; /* 讓滾動條細一點 */
+}
+
+/* 5. 下方寶可夢卡片列表獨立滾動區 */
+.pokemon-grid-container {
+  flex: 1;
+  min-height: 180px;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  padding-right: 4px;
+
+  -webkit-overflow-scrolling: touch;
+
+  /* ★ */
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+}
+
+
+.pokemon-card.selected-in-team {
+  opacity: 0.6;
+  border-color: #ffd700;
+  position: relative;
+}
+
+.selected-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffd700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 6px;
+  z-index: 2;
+}
+
+/* ==========================================================================
+   9. 戰鬥畫面與舞台 (Battle Screen & Stage)
+   ========================================================================== */
+#gameScreen,
+.game-screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  z-index: var(--z-game);
+  background-color: #1a1a24;
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  flex-direction: column;
+  padding: 12px;
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+#gameScreen.active,
+.game-screen.active {
+  display: flex;
+}
+
+.battle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  z-index: 10;
+  width: 100%;
+}
+
+.battle-info-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.battle-title-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+}
+
+.battle-timer-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-gold);
+  margin-top: 2px;
+}
+
+.btn-exit-battle {
+  padding: 6px 14px;
+  font-size: 13px;
+  background: #ff4d4d;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.btn-exit-battle:hover {
+  background: #ff2222;
+}
+
+.header-spacer {
+  width: 60px;
+}
+
+/* 戰場舞台區域 */
+.battle-stage {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  margin-top: 10px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  user-select: none;
+  background: rgba(10, 10, 18, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+}
+
+/* 我方隊員定位 */
+.player-sprite-wrapper {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  transform: translate(-50%, -50%) translateZ(0);
+  transition: left 0.1s linear, top 0.1s linear, width 0.3s ease, height 0.3s ease;
+  z-index: 8;
+  will-change: left, top;
+}
+
+.player-sprite-wrapper.mega-active {
+  width: 80px;
+  height: 80px;
+  filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+}
+
+.mega-tag-aura {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(45deg, #ff007f, #7928ca);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+  box-shadow: 0 0 8px rgba(255, 0, 127, 0.6);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  animation: auraGlow 1s infinite alternate ease-in-out;
+}
+
+@keyframes auraGlow {
+  from { opacity: 0.8; transform: translateX(-50%) scale(0.95); }
+  to { opacity: 1; transform: translateX(-50%) scale(1.05); }
+}
+
+/* 敵人容器 */
+.enemy-single-wrapper {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  transform: translate(-50%, -50%) translateZ(0);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: left 0.1s linear, top 0.1s linear;
+  z-index: 6;
+  will-change: left, top;
+}
+
+.enemy-single-wrapper.boss {
+  width: 150px;
+  height: 150px;
+  filter: drop-shadow(0 0 16px rgba(255, 0, 60, 0.75));
+  z-index: 7;
+}
+
+.enemy-single-wrapper.boss .battle-sprite-img {
+  animation: bossPulse 2s infinite alternate ease-in-out;
+}
+
+@keyframes bossPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.06); }
+}
+
+.hp-bar-mini {
+  position: absolute;
+  top: -10px;
+  width: 100%;
+  min-width: 30px;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.hp-bar-mini .hp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff4757, #ff6b81);
+  box-shadow: 0 0 6px #ff4757;
+}
+
+.battle-sprite-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+  pointer-events: none;
+}
+
+.player-sprite-wrapper .battle-sprite-img {
+  width: 100%;
+  height: 100%;
+}
+
+/* ==========================================================================
+   10. 技能與特效 (Skill & Hit Effects)
+   ========================================================================== */
+.skill-aoe-wave {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border: 2px solid;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.75;
+  box-shadow: 0 0 6px currentColor;
+  animation: waveExpand 0.3s cubic-bezier(0.15, 0.85, 0.35, 1) forwards;
+  pointer-events: none;
+  z-index: 9;
+}
+
+@keyframes waveExpand {
+  0% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.3);
+    opacity: 0;
+  }
+}
+
+.hit-spark {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 6px currentColor;
+  animation: sparkFade 0.2s ease-out forwards;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes sparkFade {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.5);
+  }
+}
+
+/* ==========================================================================
+   11. Mega 進化與結算彈窗 (Evo Modal & Settlement)
+   ========================================================================== */
+.evo-modal {
+  border: none;
+  border-radius: var(--radius-lg);
+  background: rgba(20, 20, 30, 0.95);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 0, 127, 0.5);
+  padding: 20px;
+  color: #fff;
+  max-width: 320px;
+  width: 90%;
+  margin: auto;
+}
+
+.evo-modal::backdrop {
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.evo-title {
+  text-align: center;
+  font-size: 17px;
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #ff007f;
+  text-shadow: 0 0 10px rgba(255, 0, 127, 0.8);
+}
+
+.evo-options-grid {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.evo-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  padding: 12px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+  flex: 1;
+}
+
+.evo-card:hover {
+  transform: translateY(-4px);
+  background: rgba(255, 0, 127, 0.25);
+  border-color: #ff007f;
+}
+
+.evo-close-btn {
+  width: 100%;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #ccc;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* 結算彈窗 */
+.settlement-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: var(--z-settlement);
+}
+
+.settlement-card {
+  background: #1e1e2f;
+  border: 2px solid #444;
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 320px;
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+}
+
+.settlement-card.win { border-color: #ffd700; box-shadow: 0 0 25px rgba(255, 215, 0, 0.4); }
+.settlement-card.lose { border-color: #ff4757; box-shadow: 0 0 25px rgba(255, 71, 87, 0.4); }
+
+.settlement-title { margin: 0 0 8px; font-size: 22px; }
+.settlement-card.win .settlement-title { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+.settlement-card.lose .settlement-title { color: #ff4757; text-shadow: 0 0 10px rgba(255, 71, 87, 0.5); }
+
+.settlement-msg { font-size: 13.5px; color: #aaa; margin-bottom: 16px; line-height: 1.4; }
+.settlement-rewards { background: rgba(255, 255, 255, 0.05); padding: 12px 16px; border-radius: 10px; margin-bottom: 18px; text-align: left; }
+.reward-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14.5px; }
+.reward-subtitle { font-size: 13px; color: #ddd; margin-top: 10px; margin-bottom: 6px; }
+.reward-item { font-size: 13.5px; color: #2ed573; margin-left: 8px; font-weight: bold; }
+
+.confirm-btn {
+  width: 100%;
+  padding: 12px;
+  background: #2ed573;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.confirm-btn:hover { background: #26af5f; transform: scale(1.02); }
+
+/* ==========================================================================
+   12. 抽卡系統與結果 Modal (Gacha System)
+   ========================================================================== */
+.result-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+
+  max-width: 340px;
+  max-height: 50vh;
+
+  margin: 12px auto;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  padding: 12px 6px;
+
+  -webkit-overflow-scrolling: touch;
+
+  /* ★ */
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+}
+
+
+.gacha-result-card {
+  width: 72px;
+  background: #1c1c28;
+  border: 1px solid #444;
+  border-radius: var(--radius-sm);
+  padding: 6px 4px;
+  position: relative;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: popIn 0.25s ease-out forwards;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+  will-change: transform, opacity;
+}
+
+.gacha-result-card:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5);
+}
+
+.gacha-result-card.is-up {
+  border: 1.5px solid #ff007f;
+  box-shadow: 0 0 10px rgba(255, 0, 127, 0.5);
+}
+
+.res-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.res-name {
+  color: #fff;
+  font-size: 10px;
+  font-weight: 500;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  line-height: 1.2;
+}
+
+.res-badge {
+  position: absolute;
+  top: -5px;
+  left: -4px;
+  font-size: 8px;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: #fff;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  line-height: 1;
+}
+
+.up-badge { background: linear-gradient(135deg, #ff007f, #ff5252); }
+.new-badge { background: linear-gradient(135deg, #00e676, #00b0ff); color: #000; }
+
+.res-shard-tag {
+  color: #ffc107;
+  font-size: 9px;
+  font-weight: bold;
+  margin-top: 2px;
+  line-height: 1;
+}
+
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.6); }
+  80% { transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* 抽卡 Slider 頁籤與主卡片 */
+.gacha-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px !important;
+  margin-bottom: 16px;
+  padding: 0 16px;
+}
+
+.tab-btn {
+  padding: 8px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: #aaa;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all var(--transition-fast) ease;
+}
+
+.tab-btn:hover {
+  color: #fff;
+  border-color: #666;
+}
+
+.tab-btn.active {
+  background: #00d2ff;
+  color: #121212;
+  border-color: #00d2ff;
+  box-shadow: 0 0 12px rgba(0, 210, 255, 0.4);
+}
+
+.tab-btn:active {
+  transform: scale(0.95);
+}
+
+.gacha-slider {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  flex: 1;
+  padding: 10px 0;
+}
+
+.gacha-card {
+  width: 100%;
+  max-width: 340px;
+  min-height: 420px;
+  margin: auto;
+  background: rgba(20, 20, 30, 0.95);
+  border-radius: var(--radius-lg);
+  padding: 20px 16px;
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+  font-size: 12px;
+}
+
+.gacha-card.active {
+  display: flex;
+  animation: cardFadeIn 0.2s ease-in-out;
+}
+
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.event-card { border: 1.5px solid #ff007f; }
+.standard-card { border: 1.5px solid #00d2ff; }
+
+.gacha-header-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 22px;
+}
+
+.gacha-badge {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.event-badge { background: #ff007f; color: #fff; }
+.standard-badge { background: #00d2ff; color: #000; }
+
+.switch-up-btn {
+  font-size: 10px;
+  padding: 3px 8px;
+  background: #2a2a38;
+  color: #00d2ff;
+  border: 1px solid #00d2ff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background var(--transition-fast) ease, transform var(--transition-fast) ease;
+}
+
+.switch-up-btn:hover { background: #3b3b4f; }
+.switch-up-btn:active { transform: scale(0.95); }
+
+.gacha-display {
+  margin: 16px 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  flex: 1;
+}
+
+.up-pokemon-img {
+  width: 130px;
+  height: 130px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+}
+
+.up-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.up-tag {
+  background: #ffc107;
+  color: #000;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.up-name {
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.gacha-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  margin: 16px 0 12px 0;
+}
+
+.draw-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #2a2a38;
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform var(--transition-fast) ease, filter var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+}
+
+.draw-btn:hover { filter: brightness(1.15); }
+.draw-btn:active { transform: scale(0.96); }
+
+.ball-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.event-ten { 
+  background: linear-gradient(180deg, #ff007f, #a00050); 
+  border: none; 
+  box-shadow: 0 2px 8px rgba(255, 0, 127, 0.3);
+}
+
+.standard-ten { 
+  background: linear-gradient(180deg, #00d2ff, #0070a0); 
+  border: none; 
+  color: #fff; 
+  box-shadow: 0 2px 8px rgba(0, 210, 255, 0.3);
+}
+
+.pity-footer {
+  width: 100%;
+  padding-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border-color);
+  color: #aaa;
+  font-size: 11px;
+}
+
+.pity-footer b {
+  color: #ffc107;
+}
+
+
+/* =========================================================
+   UP 寶可夢選擇 Modal
+   ========================================================= */
+
+/* Modal 外層 */
+#selectUpModal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+}
+
+/* =========================================================
+   Modal 本體
+   注意：你的 HTML 使用的是 .modal-content
+   不是 .select-up-modal
+   ========================================================= */
+
+#selectUpModal .modal-content {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+
+  width: 90%;
+  max-width: 360px;
+
+  /*
+   * 內容少 → 自動縮小
+   * 內容多 → 最多佔螢幕 90%
+   */
+  height: auto;
+  max-height: 90vh;
+
+  padding: 16px !important;
+  margin: 0 !important;
+
+  background: #14141e;
+  border: 1px solid #00d2ff;
+  border-radius: 12px;
+
+  box-sizing: border-box;
+
+  /*
+   * 只有 Modal 本體負責垂直滾動
+   */
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  color: #fff;
+  text-align: center;
+
+  flex: none !important;
+}
+
+
+/* =========================================================
+   標題
+   ========================================================= */
+
+#selectUpModal .select-up-header {
+  width: 100%;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 12px;
+
+  flex-shrink: 0;
+}
+
+#selectUpModal .select-up-header h3 {
+  margin: 0;
+
+  font-size: 15px;
+  color: #00d2ff;
+}
+
+
+/* =========================================================
+   寶可夢容器
+   ========================================================= */
+
+#selectUpContainer {
+  display: grid !important;
+
+  grid-template-columns: repeat(3, 1fr);
+
+  gap: 10px;
+
+  width: 100%;
+  max-width: 360px;
+
+  padding: 4px;
+
+  box-sizing: border-box;
+
+  /*
+   * 不在寶可夢容器限制高度
+   */
+  height: auto;
+  max-height: none;
+
+  /*
+   * 不產生第二個 scrollbar
+   */
+  overflow: visible;
+
+  flex-shrink: 0;
+}
+
+
+/* =========================================================
+   UP 提示 Banner
+   ========================================================= */
+
+.select-up-banner {
+  width: 100%;
+  max-width: 360px;
+
+  background: rgba(0, 210, 255, 0.08);
+
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  border-radius: 12px;
+
+  padding: 12px 14px;
+  margin-bottom: 16px;
+
+  text-align: center;
+
+  box-sizing: border-box;
+
+  flex-shrink: 0;
+}
+
+.select-up-banner p {
+  margin: 0;
+
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.select-up-banner b {
+  color: #00d2ff;
+}
+
+
+/* =========================================================
+   異色按鈕
+   ========================================================= */
+
+.btn-shiny {
+  background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+
+  color: #fff;
+
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+  box-shadow: 0 4px 10px rgba(255, 215, 0, 0.3);
+}
+
+.btn-shiny:disabled {
+  background: #a0a0a0;
+
+  box-shadow: none;
+
+  cursor: not-allowed;
+
+  opacity: 0.7;
+}
+
+.btn-shiny-toggle {
+  background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+
+  color: #fff;
+
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+  box-shadow: 0 4px 10px rgba(168, 85, 247, 0.3);
+}
+
+
+</style>
+</head>
+<body>
+
+  <!-- 頂部道具數目表 -->
+<div class="resources-bar">
+  <div class="resource-item">
+    <img class="resource-icon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rare-candy.png" alt="經驗值">
+    <span id="resExp">0</span>
+  </div>
+  <div class="resource-item">
+    <img class="resource-icon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/amulet-coin.png" alt="金幣">
+    <span id="resCoin">0</span>
+  </div>
+  <div class="resource-item">
+    <img class="resource-icon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png" alt="高級球">
+    <span id="resPokeBall">0</span>
+  </div>
+  <div class="resource-item">
+    <img class="resource-icon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png" alt="大師球">
+    <span id="resMasterBall">0</span>
+  </div>
+  <div class="resource-item">
+    <img class="resource-icon" src="https://raw.githubusercontent.com/msikma/pokesprite/master/items/key-item/key-stone.png" alt="mega碎片">
+    <span id="resMegaShard">0</span>
+  </div>
+  <div class="resource-item">
+  <span class="resource-icon" style="font-size: 16px; display: inline-flex; align-items: center; justify-content: center;">🧩</span>
+  <span id="resUniversalShard">0</span>
+</div>
+</div>
+
+<!-- 主頁面 -->
+<div class="home-container">
+  <div class="top-spacer"></div>
+
+  <!-- 副本清單 (由 JS 動態渲染) -->
+  <div class="dungeon-list" id="dungeonContainer"></div>
+
+  <!-- 底部 1x3 選單 -->
+  <div class="bottom-menu">
+    <button class="menu-btn" onclick="openModal('catchModal')">
+      祈願抽卡
+    </button>
+
+    <button class="menu-btn" onclick="openModal('pokedexModal')">
+      圖鑑 & 培養
+    </button>
+
+    <button class="menu-btn" onclick="openModal('settingsModal')">
+      設定
+    </button>
+  </div>
+</div>
+
+
+<!-- 選擇關卡層數彈窗 -->
+<div id="floorModal" class="modal-overlay">
+  <div class="modal-header">
+    <span class="modal-title" id="floorTitle">選擇層數</span>
+    <button class="back-btn" onclick="closeModal('floorModal')">返回</button>
+  </div>
+  <div class="modal-content">
+    <div class="floor-list" id="floorListContainer"></div>
+  </div>
+</div>
+
+<!-- 副本與隊員挑選彈窗 -->
+<div id="dungeonModal" class="modal-overlay">
+  <div class="modal-header">
+    <span class="modal-title" id="dungeonTitle">副本</span>
+    <button class="back-btn" onclick="openFloorAndCloseDungeon()">返回層數</button>
+  </div>
+  <div class="tab-bar" id="teamTabBar"></div>
+  <div class="modal-content">
+    <div class="pokemon-grid" id="teamGrid"></div>
+  </div>
+</div>
+
+<!-- 圖鑑 & 培養彈窗 -->
+<div id="pokedexModal" class="modal-overlay">
+  <div class="modal-header">
+    <span class="modal-title">圖鑑 & 培養</span>
+    <button class="back-btn" onclick="closeModal('pokedexModal')">返回</button>
+  </div>
+  <div class="tab-bar" id="pokedexTabBar"></div>
+  <div class="modal-content">
+    <div class="pokemon-grid" id="pokedexGrid"></div>
+  </div>
+</div>
+
+<!-- 強化彈窗 (手遊質感版) -->
+<div id="upgradeModal" class="modal-overlay">
+  <div class="upgrade-modal-container">
+    <div class="upgrade-modal-header">
+      <div class="upgrade-title-wrapper">
+        <span class="upgrade-modal-title" id="upgradeTitle">寶可夢強化</span>
+      </div>
+      <button class="upgrade-close-btn" onclick="closeModal('upgradeModal')">✕</button>
+    </div>
+
+    <div class="upgrade-modal-body">
+      <div class="upgrade-showcase">
+        <div class="upgrade-avatar-wrapper" id="upgradeAvatarBorder">
+          <img id="upgradeImg" src="" alt="寶可夢">
+        </div>
+        <div class="upgrade-badge-star" id="upgradeStarLevel">1星</div>
+      </div>
+
+      <div class="upgrade-rows-group">
+        <!-- 等級強化 -->
+        <div class="upgrade-row-card">
+          <div class="upgrade-info-side">
+            <div class="upgrade-label-main">等級提升 <span class="highlight-level">Lv.<span id="upgradeLevel">1</span></span><span class="max-limit">/100</span></div>
+            <div class="upgrade-cost-desc">消耗經驗值: <span id="expCostText" class="cost-num">100</span></div>
+          </div>
+          <button class="game-action-btn btn-exp" id="btnLevelUp" onclick="levelUp()">經驗升級</button>
+        </div>
+
+        <!-- 技能強化 -->
+        <div class="upgrade-row-card">
+          <div class="upgrade-info-side">
+            <div class="upgrade-label-main">技能等級 <span class="highlight-level">Lv.<span id="upgradeSkillLevel">1</span></span><span class="max-limit">/10</span></div>
+            <div class="upgrade-cost-desc">消耗金錢: <span id="coinCostText" class="cost-num">100</span></div>
+          </div>
+          <button class="game-action-btn btn-coin" id="btnSkillUp" onclick="skillUp()">金錢升級</button>
+        </div>
+
+        <!-- 升星突破 -->
+        <div class="upgrade-row-card">
+          <div class="upgrade-info-side">
+            <div class="upgrade-label-main">星級突破</div>
+            <div class="upgrade-cost-desc">消耗萬用碎片: <span id="universalCostText" class="cost-num">10</span></div>
+          </div>
+          <button class="game-action-btn btn-star" id="btnStarUp" onclick="starUp()">升星突破</button>
+        </div>
+
+        <!-- Mega 解鎖 -->
+        <div class="upgrade-row-card mega-card-row" id="megaRow" style="display: none;">
+          <div class="upgrade-info-side">
+            <div class="upgrade-label-main">Mega 進化</div>
+            <div class="upgrade-cost-desc" id="megaStatusText">未解鎖 (消耗 <span id="megaCostText">30</span> 碎片)</div>
+          </div>
+          <button class="game-action-btn btn-mega" id="btnUnlockMega" onclick="unlockMega()">Mega 解鎖</button>
+        </div>
+
+        <!-- 💡【新增】異色解鎖 / 切換外觀 -->
+        <div class="upgrade-row-card shiny-card-row" id="shinyRow" style="display: none;">
+          <div class="upgrade-info-side">
+            <div class="upgrade-label-main">異色型態</div>
+            <div class="upgrade-cost-desc" id="shinyStatusText">需滿級/滿技能/6星</div>
+          </div>
+          <div class="upgrade-btn-side">
+            <button class="game-action-btn btn-shiny" id="btnUnlockShiny" onclick="unlockShiny()">✨ 解鎖異色</button>
+            <button class="game-action-btn btn-shiny-toggle" id="btnToggleShiny" onclick="toggleShiny()" style="display: none;">✨ 切換外觀</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 其他頁面彈窗 -->
+<div id="catchModal" class="modal-overlay">
+  <div class="modal-header">
+    <span class="modal-title">祈願抽卡</span>
+    <button class="back-btn" onclick="closeModal('catchModal')">返回</button>
+  </div>
+  
+  <div class="modal-body">
+    <!-- 💡 頂部頁籤切換按鈕 (改為呼叫 switchGachaTab) -->
+    <div class="gacha-tabs">
+      <button class="tab-btn active" onclick="switchGachaTab(0)">🔥 活動祈願</button>
+      <button class="tab-btn" onclick="switchGachaTab(1)">✨ 常駐祈願</button>
+    </div>
+
+    <!-- 💡 卡池容器 (已移除滑動屬性) -->
+    <div id="gachaSlider" class="gacha-slider">
+      
+      <!-- 卡池 1：活動限定池 (💡 加上 active 預設顯示) -->
+      <div class="gacha-card event-card active">
+        <div class="gacha-header-row">
+          <div class="gacha-badge event-badge">活動限定</div>
+        </div>
+        
+        <div class="gacha-display">
+          <img id="eventUpImg" src="" alt="UP Pokemon" class="up-pokemon-img" />
+          <div class="up-info">
+            <span class="up-tag">UP 5%</span>
+            <span id="currentEventUpName" class="up-name">載入中...</span>
+          </div>
+        </div>
+
+        <div class="gacha-actions">
+          <button class="draw-btn single-btn" onclick="drawGacha('event', 1)">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png" class="ball-icon" alt="大師球" />
+            <span>單抽</span>
+          </button>
+          <button class="draw-btn ten-btn event-ten" onclick="drawGacha('event', 10)">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png" class="ball-icon" alt="大師球" />
+            <span>十連抽</span>
+          </button>
+        </div>
+
+        <div class="pity-footer">
+          <span>保底進度</span>
+          <b id="eventPityText">0/30</b>
+        </div>
+      </div>
+
+      <!-- 卡池 2：常駐祈願池 -->
+      <div class="gacha-card standard-card">
+        <div class="gacha-header-row">
+          <div class="gacha-badge standard-badge">常駐祈願</div>
+          <button class="switch-up-btn" onclick="openSelectUpModal()">切換 UP</button>
+        </div>
+        
+        <div class="gacha-display">
+          <img id="standardUpImg" src="" alt="UP Pokemon" class="up-pokemon-img" />
+          <div class="up-info">
+            <span class="up-tag">UP 5%</span>
+            <span id="currentStandardUpName" class="up-name">未選擇</span>
+          </div>
+        </div>
+
+        <div class="gacha-actions">
+          <button class="draw-btn single-btn" onclick="drawGacha('standard', 1)">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png" class="ball-icon" alt="高級球" />
+            <span>單抽</span>
+          </button>
+          <button class="draw-btn ten-btn standard-ten" onclick="drawGacha('standard', 10)">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png" class="ball-icon" alt="高級球" />
+            <span>十連抽</span>
+          </button>
+        </div>
+
+        <div class="pity-footer">
+          <span>保底進度</span>
+          <b id="standardPityText">0/50</b>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+
+<div id="settingsModal" class="modal-overlay">
+  <div class="modal-header"><span class="modal-title">設定</span><button class="back-btn" onclick="closeModal('settingsModal')">返回</button></div>
+  <div class="modal-content">
+    <p style="color: #666; margin-bottom: 15px;">系統設定與資料管理</p>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-top: 10px;">
+      <div style="font-weight: 600; color: #1e293b; margin-bottom: 12px; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+        <span>☁️</span> 雲端與換機備份
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+        <button onclick="exportSaveFile()" style="flex: 1; min-width: 130px; padding: 10px 16px; cursor: pointer; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 500; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s;">
+          📥 下載存檔
+        </button>
+        <label style="flex: 1; min-width: 130px; padding: 10px 16px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; text-align: center; box-shadow: 0 2px 4px rgba(37,99,235,0.2); transition: all 0.2s;">
+          📤 上傳還原
+          <input type="file" accept=".json" onchange="importSaveFile(event)" style="display: none;">
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 出戰隊伍選擇 Modal -->
+<div id="battleTeamModal" class="modal-overlay">
+  <div class="modal-content battle-team-content">
+    <div class="modal-header">
+      <span class="modal-title" id="battleTeamTitle">選擇參戰隊伍</span>
+      <div class="modal-header-actions" style="display: flex; gap: 8px; align-items: center;">
+        <button id="btnStartBattle" class="game-action-btn btn-exp" onclick="startBattle()">戰鬥</button>
+        <button class="back-btn" onclick="closeModal('battleTeamModal')">返回</button>
+      </div>
+    </div>
+    
+    <!-- 頂部固定區：參戰陣容與屬性標籤 -->
+    <div class="battle-team-fixed-top">
+      <div class="selected-team-container">
+        <div class="section-subtitle">出戰陣容 (最多 5 隻)</div>
+        <div id="battleTeamSlots" class="team-slots-wrapper"></div>
+      </div>
+      <div id="battleTeamTabBar" class="tab-bar"></div>
+    </div>
+
+    <!-- 下方獨立滾動區：寶可夢卡片列表 -->
+    <div id="battlePokemonGridContainer" class="pokemon-grid-container" style="overflow-y: auto; flex: 1; max-height: 50vh;">
+      <div id="battlePokemonGrid" class="pokemon-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 遊戲戰場容器 -->
+<div id="gameScreen" class="game-screen">
+  <!-- 戰場頂部精簡資訊欄 -->
+  <div class="battle-header">
+    <button class="btn-exit-battle" onclick="exitBattle()">退出</button>
+    
+    <!-- 中間：第一行關卡名稱、第二行倒數時間 -->
+    <div class="battle-info-center">
+      <div id="battleTitle" class="battle-title-text"> 活動 - 第 1 層</div>
+      <div id="battleTimer" class="battle-timer-text">⏳ 剩餘時間: 120s</div>
+    </div>
+    
+    <!-- 右側留空佔位，讓中間標題完美對齊 -->
+    <div class="header-spacer"></div>
+  </div>
+
+  <!-- 寶可夢動態戰場舞台（GIF移動區域） -->
+  <div id="battleStage" class="battle-stage"></div>
+</div>
+
+<div id="gachaResultModal" class="modal-overlay">
+  <div class="result-modal-content">
+    
+    <!-- 頂部標題區 (移除確定按鈕) -->
+    <div class="modal-header">
+      <span class="modal-title">祈願獲得</span>
+    </div>
+    
+    <!-- 內容展示區 -->
+    <div class="modal-body">
+      
+      <!-- 1. 卡牌格狀區 (單抽置中 / 十抽 2-3-3-2) -->
+      <div id="gachaResultContainer" class="result-grid"></div>
+      
+      <!-- 2. 萬能碎片總計 -->
+      <div id="gachaResultShard"></div>
+      
+      <!-- 3. 💡 移至最底部的確定按鈕 -->
+      <div class="result-actions">
+        <button class="confirm-btn" onclick="closeModal('gachaResultModal')">確定</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+
+<!-- 自選 UP 彈窗 Modal (獨立放在最外層) -->
+<div id="selectUpModal"
+     class="modal-overlay"
+     style="display:none; z-index:2000;">
+
+  <div class="modal-content select-up-modal">
+
+    <div class="select-up-header">
+      <h3>選擇常駐 UP 寶可夢</h3>
+
+      <button
+        class="close-btn"
+        onclick="closeModal('selectUpModal')">
+        ✕
+      </button>
+    </div>
+
+    <div id="selectUpContainer">
+      <!-- JS 動態生成寶可夢 -->
+    </div>
+
+  </div>
+</div>
+
+
+
+  </div>
+</div>
+
+
+  <script>
+
+    // --- IndexedDB 存檔核心模組 ---
+const DB_NAME = "PokeMasterDB";
+const DB_VERSION = 1;
+const STORE_NAME = "gameData";
+let dbInstance = null;
+
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    if (dbInstance) return resolve(dbInstance);
+
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    
+    request.onerror = (event) => {
+      console.error("IndexedDB 開啟失敗", event.target.error);
+      reject(event.target.error);
+    };
+
+    request.onsuccess = (event) => {
+      dbInstance = event.target.result;
+      resolve(dbInstance);
+    };
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+  });
+}
+
+// 全域抽卡狀態 (會寫入存檔)
+let gachaState = {
+  eventPityCount: 0,        // 活動池保底計數 (30抽)
+  standardPityCount: 0,     // 一般池保底計數 (50抽)
+  standardSelectedUpId: null // 一般池自選 UP 神獸 ID
+};
+
+// 輔助函數：取得 DOM 數字
+function getResValue(id) {
+  const el = document.getElementById(id);
+  return el ? parseInt(el.innerText.replace(/,/g, ''), 10) || 0 : 0;
+}
+
+// 輔助函數：寫入 DOM 數字
+function setResValue(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.innerText = Math.max(0, value).toLocaleString();
+}
+
+// 自動儲存至瀏覽器資料庫
+async function saveGameToDB() {
+  try {
+    const db = await openDatabase();
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+
+    const saveData = {
+      version: "1.0",
+      timestamp: Date.now(),
+
+      pokemons: POKEMON_DATA.map(p => ({
+        id: p.id,
+        unlocked: p.unlocked || false,
+        level: p.level || 1,
+        skillLevel: p.skillLevel || 1,
+        star: p.star || 1,
+
+        // ⭐ Mega 解鎖狀態
+        isMegaUnlocked: p.isMegaUnlocked || false,
+
+        // ✨ 異色狀態
+        isShinyUnlocked: p.isShinyUnlocked || false,
+        useShiny: p.useShiny || false
+      })),
+
+      dungeons: DUNGEONS.map(d => ({
+        id: d.id,
+        maxUnlockedFloor: d.maxUnlockedFloor || 1
+      })),
+
+      resources: {
+        exp: getResValue("resExp"),
+        coin: getResValue("resCoin"),
+        universalShard: getResValue("resUniversalShard"),
+        megaShard: getResValue("resMegaShard"),
+        pokeBall: getResValue("resPokeBall"),
+        masterBall: getResValue("resMasterBall")
+      },
+
+      // 抽卡保底與自選 UP 狀態
+      gachaState: gachaState
+    };
+
+    store.put(saveData, "current_save");
+
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+
+  } catch (e) {
+    console.error("儲存至資料庫失敗", e);
+  }
+}
+
+
+// 從瀏覽器資料庫讀取
+async function loadGameFromDB() {
+  try {
+    const db = await openDatabase();
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.get("current_save");
+
+    return new Promise((resolve, reject) => {
+
+      request.onsuccess = () => {
+        const data = request.result;
+
+        if (data) {
+
+          // ==========================================
+          // 1. 還原寶可夢狀態
+          // ==========================================
+          if (data.pokemons) {
+
+            data.pokemons.forEach(savedP => {
+
+              const target = POKEMON_DATA.find(
+                p => p.id === savedP.id
+              );
+
+              if (target) {
+
+                target.unlocked = savedP.unlocked;
+                target.level = savedP.level;
+                target.skillLevel = savedP.skillLevel;
+                target.star = savedP.star;
+
+                // ⭐ Mega
+                target.isMegaUnlocked =
+                  savedP.isMegaUnlocked || false;
+
+                // ✨ 異色解鎖狀態
+                target.isShinyUnlocked =
+                  savedP.isShinyUnlocked || false;
+
+                // ✨ 目前是否使用異色
+                target.useShiny =
+                  savedP.useShiny || false;
+              }
+            });
+          }
+
+
+          // ==========================================
+          // 2. 還原 DUNGEONS 各副本解鎖進度
+          // ==========================================
+          if (data.dungeons) {
+
+            data.dungeons.forEach(savedD => {
+
+              const target = DUNGEONS.find(
+                d => d.id === savedD.id
+              );
+
+              if (target) {
+                target.maxUnlockedFloor =
+                  savedD.maxUnlockedFloor || 1;
+              }
+            });
+          }
+
+
+          // ==========================================
+          // 3. 還原資源數量
+          // ==========================================
+          if (data.resources) {
+
+            setResValue(
+              "resExp",
+              data.resources.exp || 0
+            );
+
+            setResValue(
+              "resCoin",
+              data.resources.coin || 0
+            );
+
+            setResValue(
+              "resUniversalShard",
+              data.resources.universalShard || 0
+            );
+
+            setResValue(
+              "resMegaShard",
+              data.resources.megaShard || 0
+            );
+
+            setResValue(
+              "resPokeBall",
+              data.resources.pokeBall || 0
+            );
+
+            setResValue(
+              "resMasterBall",
+              data.resources.masterBall || 0
+            );
+          }
+
+
+          // ==========================================
+          // 4. 還原抽卡保底狀態
+          // ==========================================
+          if (data.gachaState) {
+
+            gachaState = {
+              ...gachaState,
+              ...data.gachaState
+            };
+          }
+
+          updateGachaUI();
+        }
+
+        resolve(true);
+      };
+
+      request.onerror = () => reject(request.error);
+    });
+
+  } catch (e) {
+    console.error("從瀏覽器資料庫讀取失敗", e);
+  }
+}
+
+    // 使用 GitHub PokeAPI 官方繪圖 (Official Artwork) 免費大圖素材
+    const getImgUrl = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
+
+    function getBattleSpriteUrl(p) {
+  const paddedId = String(p.id).padStart(3, '0');
+
+  const baseUrl = p.useShiny
+    ? 'https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/png/shuffle/'
+    : 'https://raw.githubusercontent.com/paulie0102-Bear/Bear/refs/heads/main/shuffle/';
+
+  return `${baseUrl}${paddedId}.png`;
+}
+
+
+    // ==================== 1. 資料庫與 API 核心設定 ====================
+const ELEMENT_TAGS = {
+  FIRE: { id: 'FIRE', name: '烈火', icon: '🔴' },
+  EARTH: { id: 'EARTH', name: '大地', icon: '🟢' },
+  WATER: { id: 'WATER', name: '怒濤', icon: '🔵' },
+  WIND: { id: 'WIND', name: '疾風', icon: '🟡' },
+  WHITE: { id: 'WHITE', name: '混沌/神聖', icon: '✨' }
+};
+
+const BASE_MATCHUPS = {
+  FIRE:  { EARTH: 0.25, WATER: -0.25 },
+  EARTH: { WATER: 0.25, FIRE: -0.25 },
+  WATER: { WIND: 0.25,  EARTH: -0.25 },
+  WIND:  { FIRE: 0.25,  WATER: -0.25 }
+};
+
+
+const GAME_CONFIG = {
+  STAR_UPGRADE_COST: {
+    NORMAL: [10, 20, 30, 40, 50],
+    EVENT_LEGEND: [20, 30, 40, 50, 60]
+  },
+  MEGA_SYSTEM: {
+    UNLOCK_KEYSTONE_COST: 30,
+    KILLS_REQUIRED_IN_BATTLE: 10
+  }
+};
+
+const RARITY_MAP = {
+  1: { name: '白框', className: 'rarity-white' },
+  2: { name: '藍框', className: 'rarity-blue' },
+  3: { name: '紫框', className: 'rarity-purple' },
+  4: { name: '金框', className: 'rarity-gold' },
+  5: { name: '紅框', className: 'rarity-red' },
+  6: { name: '彩框', className: 'rarity-rainbow' }
+};
+
+const EVENT_LEGEND_IDS = [
+  150, 151, 249, 250, 380, 381, 382, 383, 384, 386,
+  483, 484, 486, 487, 488, 491, 493, 494, 643, 644,
+  646, 716, 717, 718, 720
+];
+
+// 210 隻寶可夢完整名單
+const POKEMON_DATABASE = [
+  { id: 4, name: '小火龍', tag: 'FIRE', family: 4 },
+  { id: 5, name: '火恐龍', tag: 'FIRE', family: 4 },
+  { id: 6, name: '噴火龍', tag: 'FIRE', family: 4, canMega: true ,
+  shinyId:6 },
+  { id: 37, name: '六尾', tag: 'FIRE', family: 37 },
+  { id: 38, name: '九尾', tag: 'FIRE', family: 37 },
+  { id: 58, name: '卡蒂狗', tag: 'FIRE', family: 58 },
+  { id: 59, name: '風速狗', tag: 'FIRE', family: 58 },
+  { id: 77, name: '小火馬', tag: 'FIRE', family: 77 },
+  { id: 78, name: '烈焰馬', tag: 'FIRE', family: 77 },
+  { id: 126, name: '鴨嘴火獸', tag: 'FIRE', family: 126 },
+  { id: 136, name: '火伊布', tag: 'FIRE', family: 133 },
+  { id: 146, name: '火焰鳥', tag: 'FIRE', family: 146 },
+  { id: 155, name: '火球鼠', tag: 'FIRE', family: 155 },
+  { id: 156, name: '火岩鼠', tag: 'FIRE', family: 155 },
+  { id: 157, name: '火暴獸', tag: 'FIRE', family: 155 },
+  { id: 228, name: '戴魯比', tag: 'FIRE', family: 228 },
+  { id: 229, name: '黑魯加', tag: 'FIRE', family: 228, canMega: true },
+  { id: 240, name: '鴨嘴寶寶', tag: 'FIRE', family: 126 },
+  { id: 244, name: '炎帝', tag: 'FIRE', family: 244 },
+  { id: 255, name: '火稚雞', tag: 'FIRE', family: 255 },
+  { id: 256, name: '力壯雞', tag: 'FIRE', family: 255 },
+  { id: 257, name: '火焰雞', tag: 'FIRE', family: 255, canMega: true },
+  { id: 322, name: '呆火駝', tag: 'FIRE', family: 322 },
+  { id: 323, name: '噴火駝', tag: 'FIRE', family: 322, canMega: true },
+  { id: 390, name: '小火猴', tag: 'FIRE', family: 390 },
+  { id: 391, name: '猛火猴', tag: 'FIRE', family: 390 },
+  { id: 392, name: '烈焰猴', tag: 'FIRE', family: 390 },
+  { id: 467, name: '鴨嘴炎獸', tag: 'FIRE', family: 126 },
+  { id: 498, name: '暖暖豬', tag: 'FIRE', family: 498 },
+  { id: 499, name: '炒炒豬', tag: 'FIRE', family: 498 },
+  { id: 500, name: '炎武王', tag: 'FIRE', family: 498 },
+  { id: 513, name: '爆香猴', tag: 'FIRE', family: 513 },
+  { id: 514, name: '爆香猿', tag: 'FIRE', family: 513 },
+  { id: 554, name: '火紅不倒翁', tag: 'FIRE', family: 554 },
+  { id: 555, name: '達摩狒狒', tag: 'FIRE', family: 554 },
+  { id: 653, name: '火狐狸', tag: 'FIRE', family: 653 },
+  { id: 654, name: '長尾火狐', tag: 'FIRE', family: 653 },
+  { id: 655, name: '妖火紅狐', tag: 'FIRE', family: 653 },
+  { id: 667, name: '小獅獅', tag: 'FIRE', family: 667 },
+  { id: 668, name: '火炎獅', tag: 'FIRE', family: 667 },
+
+  { id: 1, name: '妙蛙種子', tag: 'EARTH', family: 1 },
+  { id: 2, name: '妙蛙草', tag: 'EARTH', family: 1 },
+  { id: 3, name: '妙蛙花', tag: 'EARTH', family: 1, canMega: true },
+  { id: 74, name: '小拳石', tag: 'EARTH', family: 74 },
+  { id: 75, name: '隆隆石', tag: 'EARTH', family: 74 },
+  { id: 76, name: '隆隆岩', tag: 'EARTH', family: 74 },
+  { id: 95, name: '大岩蛇', tag: 'EARTH', family: 95 },
+  { id: 123, name: '飛天螳螂', tag: 'EARTH', family: 123 },
+  { id: 152, name: '菊草葉', tag: 'EARTH', family: 152 },
+  { id: 153, name: '月桂葉', tag: 'EARTH', family: 152 },
+  { id: 154, name: '大竺葵', tag: 'EARTH', family: 152 },
+  { id: 208, name: '大鋼蛇', tag: 'EARTH', family: 95, canMega: true },
+  { id: 212, name: '巨鉗螳螂', tag: 'EARTH', family: 123, canMega: true },
+  { id: 214, name: '赫拉克羅斯', tag: 'EARTH', family: 214, canMega: true },
+  { id: 252, name: '木守宮', tag: 'EARTH', family: 252 },
+  { id: 253, name: '森林蜥蜴', tag: 'EARTH', family: 252 },
+  { id: 254, name: '蜥蜴王', tag: 'EARTH', family: 252, canMega: true },
+  { id: 304, name: '可可多拉', tag: 'EARTH', family: 304 },
+  { id: 305, name: '可多拉', tag: 'EARTH', family: 304 },
+  { id: 306, name: '波士可多拉', tag: 'EARTH', family: 304, canMega: true },
+  { id: 377, name: '雷吉洛克', tag: 'EARTH', family: 377 },
+  { id: 379, name: '雷吉斯奇魯', tag: 'EARTH', family: 379 },
+  { id: 387, name: '草苗龜', tag: 'EARTH', family: 387 },
+  { id: 388, name: '樹林龜', tag: 'EARTH', family: 387 },
+  { id: 389, name: '土台龜', tag: 'EARTH', family: 387 },
+  { id: 407, name: '羅絲雷朵', tag: 'EARTH', family: 407 },
+  { id: 443, name: '圓陸鯊', tag: 'EARTH', family: 443 },
+  { id: 444, name: '尖牙陸鯊', tag: 'EARTH', family: 443 },
+  { id: 445, name: '烈咬陸鯊', tag: 'EARTH', family: 443, canMega: true },
+  { id: 470, name: '葉伊布', tag: 'EARTH', family: 133 },
+  { id: 495, name: '藤藤蛇', tag: 'EARTH', family: 495 },
+  { id: 496, name: '青藤蛇', tag: 'EARTH', family: 495 },
+  { id: 497, name: '君主蛇', tag: 'EARTH', family: 495 },
+  { id: 546, name: '木棉球', tag: 'EARTH', family: 546 },
+  { id: 547, name: '風妖精', tag: 'EARTH', family: 546 },
+  { id: 636, name: '燃燒蟲', tag: 'EARTH', family: 636 },
+  { id: 637, name: '火神蛾', tag: 'EARTH', family: 636 },
+  { id: 650, name: '哈力栗', tag: 'EARTH', family: 650 },
+  { id: 651, name: '胖胖哈力', tag: 'EARTH', family: 650 },
+  { id: 652, name: '布里卡隆', tag: 'EARTH', family: 650 },
+  { id: 672, name: '坐騎小羊', tag: 'EARTH', family: 672 },
+  { id: 673, name: '坐騎山羊', tag: 'EARTH', family: 672 },
+
+  { id: 7, name: '傑尼龜', tag: 'WATER', family: 7 },
+  { id: 8, name: '卡咪龜', tag: 'WATER', family: 7 },
+  { id: 9, name: '水箭龜', tag: 'WATER', family: 7, canMega: true },
+  { id: 54, name: '可達鴨', tag: 'WATER', family: 54 },
+  { id: 55, name: '哥達鴨', tag: 'WATER', family: 54 },
+  { id: 60, name: '蚊香蝌蚪', tag: 'WATER', family: 60 },
+  { id: 61, name: '蚊香君', tag: 'WATER', family: 60 },
+  { id: 62, name: '蚊香泳士', tag: 'WATER', family: 60 },
+  { id: 129, name: '鯉魚王', tag: 'WATER', family: 129 ,
+  shinyId:129},
+  { id: 130, name: '暴鯉龍', tag: 'WATER', family: 129, canMega: true ,
+  shinyId:130},
+  { id: 131, name: '拉普拉斯', tag: 'WATER', family: 131 },
+  { id: 134, name: '水伊布', tag: 'WATER', family: 133 },
+  { id: 144, name: '急凍鳥', tag: 'WATER', family: 144 },
+  { id: 158, name: '小鋸鱷', tag: 'WATER', family: 158 },
+  { id: 159, name: '藍鱷', tag: 'WATER', family: 158 },
+  { id: 160, name: '大力鱷', tag: 'WATER', family: 158 },
+  { id: 183, name: '瑪力露', tag: 'WATER', family: 183 },
+  { id: 184, name: '瑪力露麗', tag: 'WATER', family: 183 },
+  { id: 245, name: '水君', tag: 'WATER', family: 245 },
+  { id: 258, name: '水躍魚', tag: 'WATER', family: 258 },
+  { id: 259, name: '沼躍魚', tag: 'WATER', family: 258 },
+  { id: 260, name: '巨沼怪', tag: 'WATER', family: 258, canMega: true },
+  { id: 341, name: '龍蝦小兵', tag: 'WATER', family: 341 },
+  { id: 342, name: '鐵螯龍蝦', tag: 'WATER', family: 341 },
+  { id: 363, name: '海豹球', tag: 'WATER', family: 363 },
+  { id: 364, name: '海魔獅', tag: 'WATER', family: 363 },
+  { id: 365, name: '帝牙海獅', tag: 'WATER', family: 363 },
+  { id: 378, name: '雷吉艾斯', tag: 'WATER', family: 378 },
+  { id: 393, name: '波加曼', tag: 'WATER', family: 393 },
+  { id: 394, name: '波皇子', tag: 'WATER', family: 393 },
+  { id: 395, name: '帝王拿波', tag: 'WATER', family: 393 },
+  { id: 418, name: '泳圈鼬', tag: 'WATER', family: 418 },
+  { id: 419, name: '浮潛鼬', tag: 'WATER', family: 418 },
+  { id: 471, name: '冰伊布', tag: 'WATER', family: 133 },
+  { id: 501, name: '水水獺', tag: 'WATER', family: 501 },
+  { id: 502, name: '雙刃丸', tag: 'WATER', family: 501 },
+  { id: 503, name: '大劍鬼', tag: 'WATER', family: 501 },
+  { id: 656, name: '呱呱泡蛙', tag: 'WATER', family: 656 },
+  { id: 657, name: '呱頭蛙', tag: 'WATER', family: 656 },
+  { id: 658, name: '甲賀忍蛙', tag: 'WATER', family: 656, canMega: true },
+  { id: 692, name: '鐵臂槍蝦', tag: 'WATER', family: 692 },
+  { id: 693, name: '鋼炮臂蝦', tag: 'WATER', family: 692 },
+
+  { id: 16, name: '波波', tag: 'WIND', family: 16 },
+  { id: 17, name: '比比鳥', tag: 'WIND', family: 16 },
+  { id: 18, name: '大比鳥', tag: 'WIND', family: 16, canMega: true },
+  { id: 25, name: '皮卡丘', tag: 'WIND', family: 25 },
+  { id: 26, name: '雷丘', tag: 'WIND', family: 25 },
+  { id: 41, name: '超音蝠', tag: 'WIND', family: 41 },
+  { id: 42, name: '大嘴蝠', tag: 'WIND', family: 41 },
+  { id: 66, name: '腕力', tag: 'WIND', family: 66 },
+  { id: 67, name: '豪力', tag: 'WIND', family: 66 },
+  { id: 68, name: '怪力', tag: 'WIND', family: 66 },
+  { id: 133, name: '伊布', tag: 'WIND', family: 133 },
+  { id: 135, name: '雷伊布', tag: 'WIND', family: 133 },
+  { id: 143, name: '卡比獸', tag: 'WIND', family: 143 },
+  { id: 145, name: '閃電鳥', tag: 'WIND', family: 145 },
+  { id: 169, name: '叉字蝠', tag: 'WIND', family: 41 },
+  { id: 175, name: '波克比', tag: 'WIND', family: 175 },
+  { id: 176, name: '波克基古', tag: 'WIND', family: 175 },
+  { id: 179, name: '咩利羊', tag: 'WIND', family: 179 },
+  { id: 180, name: '茸茸羊', tag: 'WIND', family: 179 },
+  { id: 181, name: '電龍', tag: 'WIND', family: 179, canMega: true },
+  { id: 243, name: '雷公', tag: 'WIND', family: 243 },
+  { id: 396, name: '姆克兒', tag: 'WIND', family: 396 },
+  { id: 397, name: '姆克鳥', tag: 'WIND', family: 396 },
+  { id: 398, name: '姆克鷹', tag: 'WIND', family: 396 },
+  { id: 403, name: '小貓怪', tag: 'WIND', family: 403 },
+  { id: 404, name: '勒克貓', tag: 'WIND', family: 403 },
+  { id: 405, name: '倫琴貓', tag: 'WIND', family: 403 },
+  { id: 417, name: '帕奇利茲', tag: 'WIND', family: 417 },
+  { id: 447, name: '利歐路', tag: 'WIND', family: 447 },
+  { id: 448, name: '路卡利歐', tag: 'WIND', family: 447, canMega: true },
+  { id: 468, name: '波克基斯', tag: 'WIND', family: 175 },
+  { id: 587, name: '電飛鼠', tag: 'WIND', family: 587 },
+  { id: 595, name: '電電蟲', tag: 'WIND', family: 595 },
+  { id: 596, name: '電蜘蛛', tag: 'WIND', family: 595 },
+  { id: 661, name: '小箭雀', tag: 'WIND', family: 661 },
+  { id: 662, name: '火箭雀', tag: 'WIND', family: 661 },
+  { id: 663, name: '烈箭鷹', tag: 'WIND', family: 661 },
+  { id: 700, name: '仙子伊布', tag: 'WIND', family: 133 },
+  { id: 701, name: '摔角鷹人', tag: 'WIND', family: 701 },
+  { id: 702, name: '咚咚鼠', tag: 'WIND', family: 702 },
+  { id: 714, name: '嗡嗡蝠', tag: 'WIND', family: 714 },
+  { id: 715, name: '音波龍', tag: 'WIND', family: 714 },
+
+  { id: 92, name: '鬼斯', tag: 'WHITE', family: 92 },
+  { id: 93, name: '鬼斯通', tag: 'WHITE', family: 92 },
+  { id: 94, name: '耿鬼', tag: 'WHITE', family: 92, canMega: true ,
+  shinyId: 94},
+  { id: 150, name: '超夢', tag: 'WHITE', family: 150, isEventLegend: true, canMega: true ,
+  shinyId:150},
+  { id: 151, name: '夢幻', tag: 'WHITE', family: 151, isEventLegend: true },
+  { id: 196, name: '太陽伊布', tag: 'WHITE', family: 133 },
+  { id: 197, name: '月亮伊布', tag: 'WHITE', family: 133 },
+  { id: 249, name: '洛奇亞', tag: 'WHITE', family: 249, isEventLegend: true },
+  { id: 250, name: '鳳王', tag: 'WHITE', family: 250, isEventLegend: true ,
+  shinyId:250},
+  { id: 251, name: '時拉比', tag: 'WHITE', family: 251 },
+  { id: 280, name: '拉魯拉絲', tag: 'WHITE', family: 280 },
+  { id: 281, name: '奇魯莉安', tag: 'WHITE', family: 280 },
+  { id: 282, name: '沙奈朵', tag: 'WHITE', family: 280, canMega: true ,
+  shinyId:282},
+  { id: 359, name: '阿勃梭魯', tag: 'WHITE', family: 359, canMega: true },
+  { id: 371, name: '寶貝龍', tag: 'WHITE', family: 371 },
+  { id: 372, name: '甲殼龍', tag: 'WHITE', family: 371 },
+  { id: 373, name: '暴飛龍', tag: 'WHITE', family: 371, canMega: true },
+  { id: 374, name: '鐵啞鈴', tag: 'WHITE', family: 374 },
+  { id: 375, name: '金屬怪', tag: 'WHITE', family: 374 },
+  { id: 376, name: '巨金怪', tag: 'WHITE', family: 374, canMega: true ,
+  shinyId:376},
+  { id: 380, name: '拉帝亞斯', tag: 'WHITE', family: 380, isEventLegend: true, canMega: true },
+  { id: 381, name: '拉帝歐斯', tag: 'WHITE', family: 381, isEventLegend: true, canMega: true },
+  { id: 382, name: '蓋歐卡', tag: 'WHITE', family: 382, isEventLegend: true, canMega: true },
+  { id: 383, name: '固拉多', tag: 'WHITE', family: 383, isEventLegend: true, canMega: true },
+  { id: 384, name: '烈空坐', tag: 'WHITE', family: 384, isEventLegend: true, canMega: true ,
+  shinyId:384},
+  { id: 385, name: '基拉祈', tag: 'WHITE', family: 385 },
+  { id: 386, name: '代歐奇希斯', tag: 'WHITE', family: 386, isEventLegend: true },
+  { id: 442, name: '花岩怪', tag: 'WHITE', family: 442 },
+  { id: 475, name: '艾路雷朵', tag: 'WHITE', family: 280, canMega: true },
+  { id: 483, name: '帝牙盧卡', tag: 'WHITE', family: 483, isEventLegend: true },
+  { id: 484, name: '帕路奇亞', tag: 'WHITE', family: 484, isEventLegend: true },
+  { id: 485, name: '席多藍恩', tag: 'WHITE', family: 485 },
+  { id: 486, name: '雷吉奇卡斯', tag: 'WHITE', family: 486, isEventLegend: true },
+  { id: 487, name: '騎拉帝納', tag: 'WHITE', family: 487, isEventLegend: true, canMega: true },
+  { id: 488, name: '克雷色莉亞', tag: 'WHITE', family: 488, isEventLegend: true },
+  { id: 491, name: '達克萊伊', tag: 'WHITE', family: 491, isEventLegend: true },
+  { id: 493, name: '阿爾宙斯', tag: 'WHITE', family: 493, isEventLegend: true },
+  { id: 494, name: '比克提尼', tag: 'WHITE', family: 494, isEventLegend: true },
+  { id: 643, name: '萊希拉姆', tag: 'WHITE', family: 643, isEventLegend: true },
+  { id: 644, name: '捷克羅姆', tag: 'WHITE', family: 644, isEventLegend: true },
+  { id: 646, name: '酋雷姆', tag: 'WHITE', family: 646, isEventLegend: true, canMega: true },
+  { id: 716, name: '哲爾尼亞斯', tag: 'WHITE', family: 716, isEventLegend: true ,
+  shinyId:716},
+  { id: 717, name: '伊裴爾塔爾', tag: 'WHITE', family: 717, isEventLegend: true ,
+  shinyId:717},
+  { id: 718, name: '基格爾德', tag: 'WHITE', family: 718, isEventLegend: true, canMega: true },
+  { id: 720, name: '胡帕', tag: 'WHITE', family: 720, isEventLegend: true, canMega: true }
+];
+
+const PokemonAPI = {
+  getAll: () => POKEMON_DATABASE,
+  getById: (id) => POKEMON_DATABASE.find(p => p.id === id),
+  getByTag: (tag) => POKEMON_DATABASE.filter(p => p.tag === tag),
+  getEventLegends: () => POKEMON_DATABASE.filter(p => p.isEventLegend),
+  getStandardPool: () => POKEMON_DATABASE.filter(p => !p.isEventLegend),
+  getMegaablePokemon: () => POKEMON_DATABASE.filter(p => p.canMega),
+  getStarCost: (pokemonId, currentStar) => {
+    if (currentStar < 1 || currentStar >= 6) return 0;
+    const isLegend = EVENT_LEGEND_IDS.includes(pokemonId);
+    const costArray = isLegend ? GAME_CONFIG.STAR_UPGRADE_COST.EVENT_LEGEND : GAME_CONFIG.STAR_UPGRADE_COST.NORMAL;
+    return costArray[currentStar - 1];
+  }
+};
+
+    // 屬性標籤分類定義
+    const CATEGORIES = [
+      { id: 'all', name: '全部' },
+      { id: 'FIRE', name: '烈火' },
+      { id: 'EARTH', name: '大地' },
+      { id: 'WATER', name: '怒濤' },
+      { id: 'WIND', name: '疾風' },
+      { id: 'WHITE', name: '混沌/神聖' }
+    ];
+
+    // 25 隻活動神獸清單
+    const EVENT_ROTATION = [
+      { id: 150, name: "超夢" }, { id: 151, name: "夢幻" }, { id: 249, name: "洛奇亞" }, { id: 250, name: "鳳王" },
+      { id: 380, name: "拉帝亞斯" }, { id: 381, name: "拉帝歐斯" }, { id: 382, name: "蓋歐卡" }, { id: 383, name: "固拉多" },
+      { id: 384, name: "烈空坐" }, { id: 386, name: "代歐奇希斯" }, { id: 483, name: "帝牙盧卡" }, { id: 484, name: "帕路奇亞" },
+      { id: 486, name: "雷吉奇卡斯" }, { id: 487, name: "騎拉帝納" }, { id: 488, name: "克雷色莉亞" }, { id: 491, name: "達克萊伊" },
+      { id: 493, name: "阿爾宙斯" }, { id: 494, name: "比克提尼" }, { id: 643, name: "萊希拉姆" }, { id: 644, name: "捷克羅姆" },
+      { id: 646, name: "酋雷姆" }, { id: 716, name: "哲爾尼亞斯" }, { id: 717, name: "伊裴爾塔爾" }, { id: 718, name: "基格爾德" },
+      { id: 720, name: "胡帕" }
+    ];
+    
+
+
+// 1. 初始化寶可夢狀態（加入異色相關欄位）
+const POKEMON_DATA = PokemonAPI.getAll().map((p, index) => ({
+  ...p,
+  unlocked: index < 5,
+  level: 1,
+  skillLevel: 1,
+  star: 1,
+  isMegaUnlocked: false,
+  isShinyUnlocked: false, // 是否已解鎖異色
+  useShiny: false         // 當前是否啟用異色外觀
+}));
+
+let selectedPokemon = null;
+
+function getDamageModifier(attackerTag, defenderTag) {
+  if (attackerTag === 'WHITE') return 0.25;
+  if (BASE_MATCHUPS[attackerTag] && BASE_MATCHUPS[attackerTag][defenderTag]) {
+    return BASE_MATCHUPS[attackerTag][defenderTag];
+  }
+  return 0.0;
+}
+
+// 2. 升星按鈕執行動作
+function starUp() {
+  if (!selectedPokemon) return;
+  if (selectedPokemon.star >= 6) return;
+
+  const cost = PokemonAPI.getStarCost(selectedPokemon.id, selectedPokemon.star);
+  const universalShardEl = document.getElementById("resUniversalShard");
+  
+  let currentShards = 0;
+  if (universalShardEl) {
+    const rawText = universalShardEl.innerText.replace(/,/g, '');
+    currentShards = parseInt(rawText) || 0;
+  }
+
+  if (currentShards >= cost) {
+    currentShards -= cost;
+    if (universalShardEl) {
+      universalShardEl.innerText = currentShards.toLocaleString();
+    }
+
+    selectedPokemon.star++;
+    updateUpgradeUI();
+    
+    const activeTab = document.querySelector("#pokedexTabBar .tab-btn.active")?.dataset?.cat || 'all';
+    filterPokemonGrid("pokedexGrid", activeTab);
+
+    // 觸發自動存檔
+    saveGameToDB();
+  } else {
+    alert(`萬用碎片不足！升到下一星需要 ${cost} 片萬用碎片。`);
+  }
+}
+
+// 3. 解鎖 Mega 狀態
+function unlockMega() {
+  if (!selectedPokemon || !selectedPokemon.canMega || selectedPokemon.isMegaUnlocked) return;
+
+  const cost = GAME_CONFIG.MEGA_SYSTEM.UNLOCK_KEYSTONE_COST;
+  const megaShardEl = document.getElementById("resMegaShard");
+  let currentMegaShards = parseInt(megaShardEl ? megaShardEl.innerText.replace(/,/g, '') : "0");
+
+  if (currentMegaShards >= cost) {
+    currentMegaShards -= cost;
+    if (megaShardEl) megaShardEl.innerText = currentMegaShards.toLocaleString();
+
+    selectedPokemon.isMegaUnlocked = true;
+    updateUpgradeUI();
+    
+    const activeTab = document.querySelector("#pokedexTabBar .tab-btn.active")?.dataset?.cat || 'all';
+    filterPokemonGrid("pokedexGrid", activeTab);
+
+    // 觸發自動存檔
+    saveGameToDB();
+  } else {
+    alert(`Mega 碎片不足！解鎖 Mega 需要 ${cost} 片 Mega 碎片。`);
+  }
+}
+
+// 4. 更新強化介面面板數值與按鈕狀態
+function updateUpgradeUI() {
+  if (!selectedPokemon) return;
+  
+  const setElText = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = text;
+  };
+
+  const setElProp = (id, prop, value) => {
+    const el = document.getElementById(id);
+    if (el) el[prop] = value;
+  };
+
+  setElText("upgradeLevel", selectedPokemon.level);
+  setElText("upgradeSkillLevel", selectedPokemon.skillLevel);
+  
+  const rarityInfo = RARITY_MAP[selectedPokemon.star] || RARITY_MAP[1];
+  setElText("upgradeStarLevel", `${selectedPokemon.star}星`);
+  setElProp("upgradeAvatarBorder", "className", `upgrade-avatar-wrapper ${rarityInfo.className}`);
+
+  const upgradeImg = document.getElementById("upgradeImg") || document.getElementById("upgradeAvatarImg");
+
+if (upgradeImg && typeof getPokePixelUrl === 'function') {
+  upgradeImg.src = getPokePixelUrl(
+    selectedPokemon.id,
+    selectedPokemon.useShiny
+  );
+}
+
+  const universalCost = PokemonAPI.getStarCost(selectedPokemon.id, selectedPokemon.star);
+  setElText("universalCostText", selectedPokemon.star >= 6 ? "MAX" : universalCost);
+
+  // Mega 列控制
+  const megaRow = document.getElementById("megaRow");
+  const megaStatusText = document.getElementById("megaStatusText");
+  const btnUnlockMega = document.getElementById("btnUnlockMega");
+  
+  setElText("megaCostText", GAME_CONFIG.MEGA_SYSTEM.UNLOCK_KEYSTONE_COST);
+
+  if (selectedPokemon.canMega) {
+    if (megaRow) megaRow.style.display = "flex";
+    if (selectedPokemon.isMegaUnlocked) {
+      if (megaStatusText) megaStatusText.innerText = "已解鎖";
+      if (btnUnlockMega) {
+        btnUnlockMega.innerText = "已解鎖";
+        btnUnlockMega.disabled = true;
+      }
+    } else {
+      if (megaStatusText) megaStatusText.innerText = "未解鎖";
+      if (btnUnlockMega) {
+        btnUnlockMega.innerText = "Mega 解鎖";
+        btnUnlockMega.disabled = false;
+      }
+    }
+  } else {
+    if (megaRow) megaRow.style.display = "none";
+  }
+
+  // 💡【新增】異色列 UI 狀態控制
+  const shinyRow = document.getElementById("shinyRow");
+  const shinyStatusText = document.getElementById("shinyStatusText");
+  const btnUnlockShiny = document.getElementById("btnUnlockShiny");
+  const btnToggleShiny = document.getElementById("btnToggleShiny");
+
+  // 若該隻寶可夢有設定異色 ID (shinyId) 才顯示異色列
+  if (shinyRow) {
+    if (selectedPokemon.shinyId) {
+      shinyRow.style.display = "flex";
+      const readyToUnlock = isMaxedOut(selectedPokemon);
+
+      if (selectedPokemon.isShinyUnlocked) {
+        // --- 已解鎖狀態 ---
+        if (shinyStatusText) {
+          shinyStatusText.innerText = selectedPokemon.useShiny ? "✨ 已啟用" : "已解鎖 (原色中)";
+        }
+        if (btnUnlockShiny) btnUnlockShiny.style.display = "none";
+        
+        if (btnToggleShiny) {
+          btnToggleShiny.style.display = "inline-block";
+          btnToggleShiny.innerText = selectedPokemon.useShiny ? "切換為原色" : "✨ 切換為異色";
+        }
+      } else {
+        // --- 未解鎖狀態 ---
+        if (shinyStatusText) {
+          shinyStatusText.innerText = readyToUnlock ? "可解鎖" : "需滿級/滿技能/6星";
+        }
+        if (btnToggleShiny) btnToggleShiny.style.display = "none";
+
+        if (btnUnlockShiny) {
+          btnUnlockShiny.style.display = "inline-block";
+          btnUnlockShiny.disabled = !readyToUnlock;
+          btnUnlockShiny.innerText = readyToUnlock ? "✨ 解鎖異色" : "未達條件";
+        }
+      }
+    } else {
+      // 若該隻寶可夢沒有異色版本，則隱藏整列
+      shinyRow.style.display = "none";
+    }
+  }
+
+  // 按鈕啟用/禁用狀態與動態消耗提示
+  const btnLevelUp = document.getElementById("btnLevelUp");
+  const btnSkillUp = document.getElementById("btnSkillUp");
+
+  if (btnLevelUp) {
+    const isMax = selectedPokemon.level >= 100;
+    setElProp("btnLevelUp", "disabled", isMax);
+    btnLevelUp.innerText = isMax ? "已滿等" : `經驗升級 (${(selectedPokemon.level * 100).toLocaleString()} 經驗)`;
+  }
+
+  if (btnSkillUp) {
+    const isMax = selectedPokemon.skillLevel >= 10;
+    setElProp("btnSkillUp", "disabled", isMax);
+    btnSkillUp.innerText = isMax ? "已滿級" : `金錢升級 (${(selectedPokemon.skillLevel * 100).toLocaleString()} 金幣)`;
+  }
+
+  setElProp("btnStarUp", "disabled", selectedPokemon.star >= 6);
+}
+
+function filterPokemonGrid(gridId, catId) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+
+  const list = catId === 'all'
+    ? POKEMON_DATA
+    : POKEMON_DATA.filter(p => p.tag === catId);
+  
+  grid.innerHTML = list.map(p => {
+    const rarityClass = p.unlocked
+      ? RARITY_MAP[p.star].className
+      : '';
+
+    // Mega 徽章
+    const megaBadge = (p.canMega && p.isMegaUnlocked) 
+      ? `<img class="mega-icon-badge"
+              src="https://raw.githubusercontent.com/msikma/pokesprite/master/items/key-item/key-stone.png"
+              alt="Mega">`
+      : '';
+
+    // ✨ 異色標籤
+    const shinyBadge = (p.isShinyUnlocked && p.useShiny)
+      ? `<div class="shiny-icon-badge">✨</div>`
+      : '';
+
+    // 📖 圖鑑 / 🔧 強化使用 PokeAPI
+    const displayImgUrl = getPokePixelUrl(
+      p.id,
+      p.isShinyUnlocked && p.useShiny
+    );
+
+    return `
+      <div class="pokemon-card ${p.unlocked ? '' : 'locked'} ${rarityClass}"
+           onclick="clickPokemon(${p.id})">
+        ${megaBadge}
+        ${shinyBadge}
+        <img class="pokemon-img" src="${displayImgUrl}" alt="${p.name}">
+        <div class="pokemon-name">${p.name}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+const DUNGEONS = [
+  { id: 'fire',  name: '烈火', class: 'fire',  pId: 6, maxUnlockedFloor: 1 },
+  { id: 'water', name: '怒濤', class: 'water', pId: 9, maxUnlockedFloor: 1 },
+  { id: 'earth', name: '大地', class: 'earth', pId: 3, maxUnlockedFloor: 1 },
+  { id: 'wind',  name: '疾風', class: 'wind',  pId: 448, maxUnlockedFloor: 1 },
+  { id: 'event', name: '神獸輪替', class: 'event event-card', isEvent: true, maxUnlockedFloor: 1 }
+];
+
+let currentDungeon = null;
+let currentEventIndex = 0;
+let lastCycleCount = -1; // 用於跨週期自動重置與更新
+
+// 💡 1. 輪換時間設定 (14 天 = 14 * 24 * 60 * 60 * 1000 毫秒)
+const ROTATION_MS = 14 * 24 * 60 * 60 * 1000;
+
+// 💡 2. 全球統一基準時間點 (固定 anchor 時間，確保所有玩家時間線 100% 對齊)
+const EVENT_ANCHOR_TIME = new Date("2026-01-01T00:00:00Z").getTime();
+
+// 網頁載入時初始化，自動從 IndexedDB 讀取存檔
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadGameFromDB();
+  
+  // 初始化全球統一的活動副本狀態
+  syncGlobalEventState();
+  
+  renderDungeons();
+  startEventTimer();
+  
+  renderTabs("pokedexTabBar", "pokedexGrid");
+  renderTabs("teamTabBar", "teamGrid");
+  filterPokemonGrid("pokedexGrid", "all");
+  filterPokemonGrid("teamGrid", "all");
+});
+
+// 計算全球統一的週期數、當前活動索引與倒數時間
+function getGlobalEventInfo() {
+  const now = Date.now();
+  const elapsed = Math.max(0, now - EVENT_ANCHOR_TIME);
+  
+  // 計算從基準點至今經歷了幾輪 (每 14 天為一輪)
+  const cycleCount = Math.floor(elapsed / ROTATION_MS);
+  
+  // 計算全世界統一的活動副本索引
+  const eventIndex = cycleCount % EVENT_ROTATION.length;
+  
+  // 下一次輪換的時間點與剩餘毫秒數
+  const nextRotationTime = EVENT_ANCHOR_TIME + (cycleCount + 1) * ROTATION_MS;
+  const diff = Math.max(0, nextRotationTime - now);
+
+  return { cycleCount, eventIndex, diff };
+}
+
+// 同步與檢查活動狀態（跨兩週時自動重置副本與存檔）
+function syncGlobalEventState() {
+  const { cycleCount, eventIndex } = getGlobalEventInfo();
+  
+  // 檢查是否跨入了新的 14 天週期 (首刷網頁或掛網剛好跨過輪換點)
+  if (lastCycleCount !== -1 && lastCycleCount !== cycleCount) {
+    const eventDungeon = DUNGEONS.find(d => d.isEvent);
+    if (eventDungeon) {
+      eventDungeon.maxUnlockedFloor = 1; // 重置最大解鎖層數為第 1 層
+    }
+
+    if (typeof saveGameToDB === 'function') {
+      saveGameToDB();
+    }
+  }
+
+  currentEventIndex = eventIndex;
+  lastCycleCount = cycleCount;
+}
+
+function renderDungeons() {
+  const container = document.getElementById("dungeonContainer");
+  if (!container) return;
+  
+  container.innerHTML = DUNGEONS.map((d, index) => {
+    if (d.isEvent) {
+      const currentEvent = EVENT_ROTATION[currentEventIndex];
+
+      return `
+        <div class="dungeon-card ${d.class}" onclick="openFloorModal(${index})">
+          <div class="dungeon-info">
+            <div class="dungeon-name" id="eventDungeonName">${currentEvent.name}</div>
+            <div class="dungeon-timer" id="eventTimer">載入中...</div>
+          </div>
+          <img class="dungeon-icon" id="eventDungeonImg" src="${getImgUrl(currentEvent.id)}" alt="${currentEvent.name}">
+        </div>
+      `;
+    } else {
+      return `
+        <div class="dungeon-card ${d.class}" onclick="openFloorModal(${index})">
+          <div class="dungeon-info">
+            <div class="dungeon-name">${d.name}</div>
+          </div>
+          <img class="dungeon-icon" src="${getImgUrl(d.pId)}" alt="${d.name}">
+        </div>
+      `;
+    }
+  }).join('');
+}
+
+
+
+function updateEventDungeonUI() {
+  const currentEvent = EVENT_ROTATION[currentEventIndex];
+  const nameEl = document.getElementById("eventDungeonName");
+  const imgEl = document.getElementById("eventDungeonImg");
+
+  if (nameEl && imgEl) {
+    nameEl.innerText = ` (${currentEvent.name})`;
+    imgEl.src = getImgUrl(currentEvent.id);
+  }
+}
+
+// 實時更新倒數文字顯示與輪換監控
+function updateTimerDisplay() {
+  const { cycleCount, diff } = getGlobalEventInfo();
+
+  // 若倒數歸零並進入新週期，即時刷新 UI 與狀態
+  if (cycleCount !== lastCycleCount) {
+    syncGlobalEventState();
+    updateEventDungeonUI();
+
+    if (typeof currentDungeon !== 'undefined' && currentDungeon && currentDungeon.isEvent) {
+      renderFloorList();
+    }
+  }
+
+  // 計算剩餘 天、時、分、秒
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+  const timerEl = document.getElementById("eventTimer");
+  if (timerEl) {
+    timerEl.innerText = `輪換倒數: ${days}天 ${hours}小時 ${minutes}分 ${seconds}秒`;
+  }
+}
+
+function startEventTimer() {
+  updateTimerDisplay(); // 載入時立即渲染時間，避免 1 秒空白
+  setInterval(updateTimerDisplay, 1000); // 每秒自動更新
+}
+
+function openFloorModal(dungeonIndex) {
+  currentDungeon = DUNGEONS[dungeonIndex];
+  let titleName = currentDungeon.name;
+  if (currentDungeon.isEvent) {
+    titleName = ` ${EVENT_ROTATION[currentEventIndex].name}`;
+  }
+  document.getElementById("floorTitle").innerText = `${titleName} - 選擇層數`;
+  renderFloorList();
+  openModal("floorModal");
+}
+
+function renderFloorList() {
+  const container = document.getElementById("floorListContainer");
+  let html = '';
+  for (let i = 1; i <= 10; i++) {
+    const isUnlocked = i <= currentDungeon.maxUnlockedFloor;
+    const statusText = isUnlocked ? `第 ${i} 層 (已解鎖)` : `第 ${i} 層 (未解鎖)`;
+    html += `
+      <div class="floor-card ${isUnlocked ? '' : 'locked'}" onclick="selectFloor(${i}, ${isUnlocked})">
+        <div class="floor-info">第 ${i} 層</div>
+        <div class="floor-status">${statusText}</div>
+      </div>
+    `;
+  }
+  container.innerHTML = html;
+}
+
+// --- 參戰編隊狀態變數 ---
+let selectedFloorNum = 1;
+let battleTeam = []; // 存放已選出戰的寶可夢 ID (上限 5 隻)
+
+const BATTLE_TEAM_STORAGE_KEY = 'last_battle_team';
+
+// 讀取記憶隊伍
+function loadSavedBattleTeam() {
+  try {
+    const saved = localStorage.getItem(BATTLE_TEAM_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        // 過濾確保記憶中的寶可夢依然存在且已解鎖
+        return parsed.filter(id => {
+          const p = POKEMON_DATA.find(item => item.id === id);
+          return p && p.unlocked;
+        }).slice(0, 5);
+      }
+    }
+  } catch (e) {
+    console.error("讀取記憶隊伍失敗:", e);
+  }
+  return [];
+}
+
+// 儲存記憶隊伍
+function saveBattleTeam(team) {
+  try {
+    localStorage.setItem(BATTLE_TEAM_STORAGE_KEY, JSON.stringify(team));
+  } catch (e) {
+    console.error("儲存隊伍失敗:", e);
+  }
+}
+
+// 1. 覆寫選擇關卡邏輯：開啟編隊 Modal
+function selectFloor(floorNum, isUnlocked) {
+  if (!isUnlocked) return;
+  
+  selectedFloorNum = floorNum;
+  
+  // 💡 記憶隊伍功能：開啟時自動載入上一次出戰隊伍
+  battleTeam = loadSavedBattleTeam();
+  
+  closeModal('floorModal');
+  
+  // 設定標題
+  const dungeonName = currentDungeon.isEvent 
+    ? ` ${EVENT_ROTATION[currentEventIndex].name}` 
+    : currentDungeon.name;
+  
+  const titleEl = document.getElementById("battleTeamTitle");
+  if (titleEl) {
+    titleEl.innerText = `${dungeonName} - 第 ${selectedFloorNum} 層`;
+  }
+
+  // 初始化編隊 UI
+  renderBattleTeamTabs();
+  renderBattleTeamSlots();
+  filterBattlePokemonGrid('all');
+  
+  openModal('battleTeamModal');
+}
+
+// 2. 渲染編隊 Modal 內部的屬性分類標籤
+function renderBattleTeamTabs() {
+  const tabBar = document.getElementById("battleTeamTabBar");
+  if (!tabBar) return;
+  
+  tabBar.innerHTML = CATEGORIES.map((cat, idx) => `
+    <button class="tab-btn ${idx === 0 ? 'active' : ''}" data-cat="${cat.id}" onclick="selectBattleTab(this, '${cat.id}')">
+      ${cat.name}
+    </button>
+  `).join('');
+}
+
+function selectBattleTab(btn, catId) {
+  const tabBar = document.getElementById("battleTeamTabBar");
+  if (!tabBar) return;
+  tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterBattlePokemonGrid(catId);
+}
+
+// 3. 渲染上方已選隊員 5 個欄位
+function renderBattleTeamSlots() {
+  const container = document.getElementById("battleTeamSlots");
+  if (!container) return;
+
+  const MAX_SLOTS = 5;
+  let html = '';
+  
+  for (let i = 0; i < MAX_SLOTS; i++) {
+    const pId = battleTeam[i];
+
+    if (pId) {
+      const p = POKEMON_DATA.find(item => item.id === pId);
+
+      if (!p) continue;
+
+      const spriteUrl = getPokePixelUrl(
+        p.id,
+        p.isShinyUnlocked && p.useShiny
+      );
+
+      html += `
+        <div class="team-slot occupied" onclick="toggleBattleMember(${p.id})">
+          <div class="remove-btn">×</div>
+          <img class="slot-img"
+               src="${spriteUrl}"
+               alt="${p.name}">
+          <div class="slot-name">${p.name}</div>
+        </div>
+      `;
+    } else {
+      html += `
+        <div class="team-slot empty">
+          <div class="slot-placeholder">空位 ${i + 1}</div>
+        </div>
+      `;
+    }
+  }
+  
+  container.innerHTML = html;
+
+  const btnStart = document.getElementById("btnStartBattle");
+  if (btnStart) {
+    btnStart.disabled = battleTeam.length === 0;
+  }
+}
+
+// 4. 篩選與渲染可選擇寶可夢（只顯示已解鎖 unlocked: true，防重複）
+function filterBattlePokemonGrid(catId) {
+  const grid = document.getElementById("battlePokemonGrid");
+  if (!grid) return;
+
+  let list = POKEMON_DATA.filter(p => p.unlocked);
+
+  if (catId !== 'all') {
+    list = list.filter(p => p.tag === catId);
+  }
+
+  if (list.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1/-1; color: #aaa; text-align: center; padding: 20px;">
+        此分類下尚無已獲得的寶可夢
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(p => {
+    const isSelected = battleTeam.includes(p.id);
+    const rarityClass = RARITY_MAP[p.star]?.className || '';
+
+    const megaBadge = (p.canMega && p.isMegaUnlocked)
+      ? `<img class="mega-icon-badge"
+              src="https://raw.githubusercontent.com/msikma/pokesprite/master/items/key-item/key-stone.png"
+              alt="Mega">`
+      : '';
+
+    // ✨ 根據目前是否啟用異色，使用 PokeAPI 原色 / 異色
+    const spriteUrl = getPokePixelUrl(
+      p.id,
+      p.isShinyUnlocked && p.useShiny
+    );
+
+    return `
+      <div class="pokemon-card ${rarityClass} ${isSelected ? 'selected-in-team' : ''}"
+           onclick="toggleBattleMember(${p.id})">
+
+        ${megaBadge}
+
+        ${isSelected ? '<div class="selected-overlay">已在隊伍中</div>' : ''}
+
+        <img class="pokemon-img"
+             src="${spriteUrl}"
+             alt="${p.name}">
+
+        <div class="pokemon-name">${p.name}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// 5. 點擊卡片/欄位切換選擇狀態（防止重複選擇與上限 5 隻限制）
+function toggleBattleMember(pId) {
+  const index = battleTeam.indexOf(pId);
+
+  if (index > -1) {
+    // 已經在隊伍中 -> 取消選擇
+    battleTeam.splice(index, 1);
+  } else {
+    // 不在隊伍中 -> 檢查是否已滿 5 隻
+    if (battleTeam.length >= 5) {
+      alert("參戰隊伍最多只能選擇 5 隻寶可夢！");
+      return;
+    }
+    battleTeam.push(pId);
+  }
+
+  // 💡 異動隊伍時即時更新記憶數據
+  saveBattleTeam(battleTeam);
+
+  // 重新渲染陣容狀態與列表
+  renderBattleTeamSlots();
+  const activeTab = document.querySelector("#battleTeamTabBar .tab-btn.active")?.dataset?.cat || 'all';
+  filterBattlePokemonGrid(activeTab);
+}
+
+// 取得副本長條圖背景 URL
+function getDungeonBannerUrl(dungeonId) {
+  return `https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/png/${dungeonId}.png`;
+}
+
+// 1. 取得黑白版動態 GIF 網址
+function getPokeGifUrl(id) {
+  const numId = parseInt(id, 10);
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${numId}.gif`;
+}
+
+// 2. 取得 PokeAPI 標準靜態像素圖網址 (PNG)
+function getPokePixelUrl(id, useShiny = false) {
+  const numId = parseInt(id, 10);
+
+  // ✨ 異色 → PokeAPI Shiny
+  if (useShiny) {
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${numId}.png`;
+  }
+
+  // 📖 普通 → PokeAPI
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${numId}.png`;
+}
+
+// ==================== 1. 戰場進入與初始化 ====================
+
+// 開始戰鬥
+function startBattle() {
+  if (!battleTeam || battleTeam.length === 0) {
+    alert("請至少選擇 1 隻寶可夢出戰！");
+    return;
+  }
+
+  // 💡 再次確保儲存當前隊伍
+  saveBattleTeam(battleTeam);
+
+  // 1. 關閉選擇隊員彈窗
+  if (typeof closeModal === 'function') {
+    closeModal('battleTeamModal');
+  }
+
+  // 2. 取得當前副本背景
+  const bannerBgUrl = getDungeonBannerUrl(currentDungeon.id);
+
+  // 3. 切換戰場顯示
+  const gameScreen = document.getElementById("gameScreen");
+  if (gameScreen) {
+    gameScreen.style.backgroundImage = `url('${bannerBgUrl}')`;
+    gameScreen.classList.add("active");
+  }
+
+  // 4. 呼叫戰鬥系統
+  startBattleSystem(currentDungeon, selectedFloorNum, battleTeam);
+}
+
+// 渲染戰場標題與隊伍預覽 (使用 shuffle 圖片)
+function renderBattleScreen() {
+  const dungeonName = currentDungeon.isEvent 
+    ? ` ${EVENT_ROTATION[currentEventIndex].name}` 
+    : currentDungeon.name;
+
+  const titleEl = document.getElementById("battleTitle");
+  if (titleEl) {
+    titleEl.innerText = `${dungeonName} (第 ${selectedFloorNum} 層)`;
+  }
+
+  const stageEl = document.getElementById("battleStage");
+
+  if (stageEl) {
+    stageEl.innerHTML = battleTeam.map(pId => {
+      const p = POKEMON_DATA.find(item => item.id === pId);
+      if (!p) return '';
+
+      // ⚔️ 戰場仍然使用 Shuffle
+      // ✨ useShiny 會跟著 POKEMON_DATA 一起傳入
+      const shuffleUrl = getPlayerSpriteUrl({
+        ...p,
+        isMega: false
+      });
+
+      // 圖片載入失敗時，改用 PokeAPI
+      // 原色 / 異色會依照目前狀態切換
+      const fallbackUrl = getPokePixelUrl(
+        p.id,
+        p.isShinyUnlocked && p.useShiny
+      );
+
+      return `
+        <div class="battle-sprite-wrapper">
+          <img class="battle-sprite-img"
+               src="${shuffleUrl}"
+               alt="${p.name || ''}"
+               onerror="this.onerror=null; this.src='${fallbackUrl}';">
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+// 🎯 主動點擊退出按鈕時，必須清理 Timer 避免背景運行
+function exitBattle() {
+  battleState.active = false;
+  if (battleState.timerInterval) clearInterval(battleState.timerInterval);
+  if (battleState.loopInterval) clearInterval(battleState.loopInterval);
+
+  const gameScreen = document.getElementById("gameScreen");
+  if (gameScreen) {
+    gameScreen.classList.remove("active");
+  }
+}
+
+// ==================== 2. 數值與傷害計算 ====================
+
+// 非活動神獸的副神獸 ID
+const SUB_LEGEND_IDS = [144, 145, 146, 243, 244, 245, 251, 377, 378, 379, 385, 485];
+
+// 自動判定寶可夢階級
+function getPokemonStage(p) {
+  if (!p) return '普通';
+  if (p.isEventLegend) return '活動神話';
+  if (p.canMega || SUB_LEGEND_IDS.includes(p.id)) return '強力';
+  return '普通';
+}
+
+// 傷害倍率表
+const STAGE_MULTIPLIER = {
+  '普通': 1.0,
+  '強力': 1.25,
+  '活動神話': 1.5
+};
+
+// 計算單隻我方寶可夢的秒傷 (DPS)
+function calculatePlayerDamage(pData, runtimeState = {}) {
+  const p = (typeof PokemonAPI !== 'undefined' && PokemonAPI.getById) 
+    ? (PokemonAPI.getById(pData.id) || pData) 
+    : pData;
+  const stage = getPokemonStage(p);
+  const stageMult = STAGE_MULTIPLIER[stage];
+  
+  const level = pData.level || 1;
+  const skillLevel = pData.skillLevel || 1;
+  const isMega = runtimeState.isMega ? 1.5 : 1.0;
+
+  const dmg = 100 * stageMult * (1 + level / 100) * (1 + skillLevel / 10) * isMega;
+  return Math.round(dmg);
+}
+
+// 敵人 ID 設定
+const ENEMY_ID_MAP = {
+  FIRE:  { boss: 467, elite: 229, minion: 322 },
+  WIND:  { boss: 143, elite: 262, minion: 69 },
+  EARTH: { boss: 306, elite: 407, minion: 74 },
+  WATER: { boss: 130, elite: 418, minion: 341 }
+};
+
+// 計算敵人單體基礎血量
+function getEnemyMaxHp(type, floorNum) {
+  const baseHp = { minion: 1000, elite: 3000, boss: 10000 };
+  const multiplier = 1 + (floorNum - 1) * 0.2;
+  return Math.round(baseHp[type] * multiplier);
+}
+
+// 屬性標籤顏色
+const TAG_COLORS = {
+  FIRE: '#ff3838',
+  WATER: '#1e90ff',
+  WIND: '#2ed573',
+  EARTH: '#ffa502',
+  DEFAULT: '#ffffff'
+};
+
+// ==================== 3. 戰鬥核心狀態與啟動 ====================
+
+let battleState = {
+  active: false,
+  timer: 120,
+  currentWaveIndex: 0,
+  waves: [],
+  enemies: [],
+  players: [],
+  killCount: 0,
+  effects: [],
+  dungeon: null,
+  floorNum: 1,
+  timerInterval: null,
+  loopInterval: null
+};
+
+function startBattleSystem(dungeon, floorNum, teamIds) {
+  battleState.dungeon = dungeon;
+  battleState.floorNum = floorNum;
+  battleState.timer = 120;
+  battleState.currentWaveIndex = 0;
+  battleState.killCount = 0;
+  battleState.effects = [];
+  battleState.active = true;
+
+  // 1. 產生敵波次邏輯
+  battleState.waves = generateIndividualEnemies(dungeon, floorNum);
+
+  // 2. 敵方初始化
+  const rawEnemies = battleState.waves[0] || [];
+
+  battleState.enemies = rawEnemies.map((enemy) => {
+    return {
+      ...enemy,
+      x: 10 + Math.random() * 80,
+      y: 15 + Math.random() * 30,
+      speed: 0.8 + Math.random() * 0.6,
+      vx: (Math.random() - 0.5) * 2,
+      vy: (Math.random() - 0.5) * 2
+    };
+  });
+
+  // 3. 我方初始化（修正：結合玩家存檔資料，確保 Mega 與異色狀態正確載入）
+  battleState.players = teamIds.map((id, index) => {
+    // 優先從玩家擁有的寶可夢清單（playerPokemonList）中尋找
+    const ownedPokemon = typeof playerPokemonList !== 'undefined' 
+      ? playerPokemonList.find(p => p.id === id) 
+      : null;
+
+    // 基礎圖鑑資料（用來補齊名稱、屬性等預設值）
+    const baseData = POKEMON_DATA.find(item => item.id === id) || {};
+
+    // 綜合玩家資料與基礎資料
+    const pData = {
+      ...baseData,
+      ...(ownedPokemon || {}),
+      id: id,
+      level: ownedPokemon ? ownedPokemon.level : 1,
+      skillLevel: ownedPokemon ? ownedPokemon.skillLevel : 1
+    };
+
+    return {
+      id: id,
+      name: pData.name || '寶可夢',
+      tag: (pData.tag || 'FIRE').toUpperCase(),
+      canMega: pData.canMega || false,
+
+      // Mega 狀態
+      isMegaUnlocked: pData.isMegaUnlocked || false,
+      megaForm: pData.megaForm || null,
+      isMega: false,
+      megaTriggered: false,
+
+      // ✨ 異色狀態
+      isShinyUnlocked: pData.isShinyUnlocked || false,
+      useShiny: pData.useShiny || false,
+
+      // 傷害
+      dps: calculatePlayerDamage(pData, { isMega: false }),
+
+      // 戰場位置
+      x: 15 + (index % 5) * 18,
+      y: 65 + Math.floor(index / 5) * 12,
+
+      speed: 0.6,
+      angleOffset: (index / teamIds.length) * Math.PI * 2,
+      skillCooldown: Math.floor(Math.random() * 10)
+    };
+  });
+
+  // 4. 先繪製/開啟戰場畫面
+  renderBattleScreen();
+
+  // 5. 更新標題
+  updateBattleTitle(dungeon, floorNum);
+
+  // 6. 啟動計時器與邏輯迴圈
+  startTimers();
+}
+
+// 獨立出來的標題更新函式（防錯力更強）
+function updateBattleTitle(dungeon, floorNum) {
+  const titleEl = document.getElementById("battleTitle");
+  if (!titleEl) return;
+
+  // A. 防錯判斷：確保取得完整的 dungeon 物件（即使傳入的是 ID 或 index）
+  let dObj = dungeon;
+  if (typeof dungeon === 'string' && typeof DUNGEONS !== 'undefined') {
+    dObj = DUNGEONS.find(d => d.id === dungeon) || { name: dungeon };
+  } else if (typeof dungeon === 'number' && typeof DUNGEONS !== 'undefined') {
+    dObj = DUNGEONS[dungeon] || { name: '戰場' };
+  }
+
+  let baseName = dObj?.name || '副本';
+
+  // B. 如果是活動副本，拿當前輪替的神獸名字 (例如：超夢)
+  if (dObj?.isEvent && typeof EVENT_ROTATION !== 'undefined' && typeof currentEventIndex !== 'undefined') {
+    baseName = EVENT_ROTATION[currentEventIndex]?.name || baseName;
+  }
+
+  // C. 過濾多餘字眼
+  const cleanName = baseName
+    .replace(/\(.*?\)|（.*?）/g, '')  // 去除半角/全角括號內容
+    .replace(/屬性副本|副本/g, '')   // 去除「屬性副本」或「副本」
+    .trim();
+
+  const finalName = cleanName || '戰場';
+
+  // D. 寫入 DOM
+  titleEl.innerText = `${finalName}第 ${floorNum} 層`;
+}
+
+// 生成波次獨立敵人
+function generateIndividualEnemies(dungeon, floorNum) {
+  const isEvent = dungeon?.isEvent || ((typeof dungeon === 'string' ? dungeon : dungeon?.tag || dungeon?.id || '').toUpperCase() === 'EVENT');
+  let actualTag = (typeof dungeon === 'string' ? dungeon : dungeon?.tag || dungeon?.id || '').toUpperCase();
+  
+  if (isEvent || !ENEMY_ID_MAP[actualTag]) {
+    const keys = ['FIRE', 'WIND', 'EARTH', 'WATER'];
+    actualTag = keys[Math.floor(Math.random() * keys.length)];
+  }
+  
+  const ids = { ...ENEMY_ID_MAP[actualTag] };
+
+  if (isEvent && typeof EVENT_ROTATION !== 'undefined' && typeof currentEventIndex !== 'undefined') {
+    ids.boss = EVENT_ROTATION[currentEventIndex]?.id || 150;
+  }
+
+  const hpMinion = getEnemyMaxHp('minion', floorNum);
+  const hpElite  = getEnemyMaxHp('elite', floorNum);
+  const hpBoss   = getEnemyMaxHp('boss', floorNum);
+
+  const waves = [[], [], []];
+
+  const addEnemy = (waveIndex, pokeId, type, hp, size) => {
+    waves[waveIndex].push({
+      id: `enemy_${waveIndex}_${waves[waveIndex].length}`,
+      pokeId: pokeId,
+      type: type,
+      hp: hp,
+      maxHp: hp,
+      size: size,
+      x: 15 + Math.random() * 70,
+      y: 15 + Math.random() * 40,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4
+    });
+  };
+
+  for (let i = 0; i < 30; i++) addEnemy(0, ids.minion, 'minion', hpMinion, 40);
+  for (let i = 0; i < 20; i++) addEnemy(1, ids.minion, 'minion', hpMinion, 40);
+  for (let i = 0; i < 5; i++)  addEnemy(1, ids.elite,  'elite',  hpElite,  60);
+  for (let i = 0; i < 5; i++)  addEnemy(2, ids.elite,  'elite',  hpElite,  60);
+  addEnemy(2, ids.boss, 'boss', hpBoss, 150);
+
+  return waves;
+}
+
+// ==================== 4. 戰鬥邏輯主迴圈 ====================
+
+function updateBattleLoop() {
+  const enemies = battleState.enemies;
+
+  // 💡 設定戰場邊界限制（防止超出 UI 欄與容器）
+  const MIN_X = 5;   // 左邊界 5%
+  const MAX_X = 90;  // 右邊界 90%
+  const MIN_Y = 12;  // 頂部邊界 12% (避開 60px 頂部欄)
+  const MAX_Y = 88;  // 底部邊界 88%
+
+  // 1. 敵人移動與加速 logic
+  enemies.forEach(e => {
+    // 💡 加上 speed 速度倍率加速，沒有預設值就用 1.3 倍速
+    const currentSpeed = e.speed || 1.3;
+    e.x += e.vx * currentSpeed;
+    e.y += e.vy * currentSpeed;
+
+    // 💡 擴大移動範圍至全戰場 (MIN_X~MAX_X, MIN_Y~MAX_Y) 並做反彈與邊界修正
+    if (e.x < MIN_X || e.x > MAX_X) {
+      e.vx *= -1;
+      e.x = Math.max(MIN_X, Math.min(MAX_X, e.x));
+    }
+    if (e.y < MIN_Y || e.y > MAX_Y) {
+      e.vy *= -1;
+      e.y = Math.max(MIN_Y, Math.min(MAX_Y, e.y));
+    }
+  });
+
+  // 2. 我方角色 AI & 攻擊 logic
+  battleState.players.forEach((p, idx) => {
+    if (enemies.length === 0) return;
+
+    // 尋找最近敵人
+    let closest = enemies[0];
+    let minDist = 9999;
+    enemies.forEach(e => {
+      const d = Math.hypot(e.x - p.x, e.y - p.y);
+      if (d < minDist) { minDist = d; closest = e; }
+    });
+
+    p.angleOffset += 0.02;
+    const targetX = closest.x + Math.cos(p.angleOffset) * 15;
+    const targetY = closest.y + Math.sin(p.angleOffset) * 15;
+
+    const dx = targetX - p.x;
+    const dy = targetY - p.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 1) {
+      p.x += (dx / dist) * 1.2;
+      p.y += (dy / dist) * 1.2;
+    }
+
+    // 💡 我方成員互相推開，避免重疊
+    battleState.players.forEach((otherP, oIdx) => {
+      if (idx !== oIdx) {
+        const pdx = p.x - otherP.x;
+        const pdy = p.y - otherP.y;
+        const pDist = Math.hypot(pdx, pdy);
+        if (pDist < 7 && pDist > 0) {
+          p.x += (pdx / pDist) * 0.6;
+          p.y += (pdy / pDist) * 0.6;
+        }
+      }
+    });
+
+    // 💡【新增】我方成員與敵人互相推開，避免重疊遮擋
+    enemies.forEach(e => {
+      const edx = p.x - e.x;
+      const edy = p.y - e.y;
+      const eDist = Math.hypot(edx, edy);
+      const MIN_PE_DIST = 6; // 我方與敵人的防重疊安全距離 (視圖示大小調整，約 6%)
+
+      if (eDist < MIN_PE_DIST && eDist > 0) {
+        const pushForce = (MIN_PE_DIST - eDist) * 0.25; // 越近推力越強
+        const nx = edx / eDist;
+        const ny = edy / eDist;
+
+        // 我方反向推開
+        p.x += nx * pushForce;
+        p.y += ny * pushForce;
+
+        // 敵人同步被輕微反推（增加碰撞真實感）
+        e.x -= nx * (pushForce * 0.5);
+        e.y -= ny * (pushForce * 0.5);
+
+        // 敵人邊界限制
+        e.x = Math.max(MIN_X, Math.min(MAX_X, e.x));
+        e.y = Math.max(MIN_Y, Math.min(MAX_Y, e.y));
+      }
+    });
+
+    // 💡 我方座標邊界鎖定：確保不會被推離或跑到戰場容器之外
+    p.x = Math.max(MIN_X, Math.min(MAX_X, p.x));
+    p.y = Math.max(MIN_Y, Math.min(MAX_Y, p.y));
+
+    // 技能與攻擊邏輯
+    p.skillCooldown++;
+    if (p.skillCooldown >= 12) {
+      p.skillCooldown = 0;
+
+      const sortedEnemies = [...enemies]
+        .map(e => ({ enemy: e, dist: Math.hypot(e.x - p.x, e.y - p.y) }))
+        .sort((a, b) => a.dist - b.dist);
+
+      const targetEnemies = sortedEnemies.slice(0, 5);
+      const color = (typeof TAG_COLORS !== 'undefined' && TAG_COLORS[p.tag]) || '#ffcb05';
+
+      battleState.effects.push({
+        type: 'aoe_wave',
+        x: p.x,
+        y: p.y,
+        color: color,
+        life: 5
+      });
+
+      targetEnemies.forEach(item => {
+        item.enemy.hp -= p.dps * 1.5;
+        battleState.effects.push({
+          type: 'hit',
+          x: item.enemy.x,
+          y: item.enemy.y,
+          color: color,
+          life: 3
+        });
+      });
+    }
+  });
+
+  // 3. 動態效果衰減
+  for (let i = battleState.effects.length - 1; i >= 0; i--) {
+    battleState.effects[i].life--;
+    if (battleState.effects[i].life <= 0) battleState.effects.splice(i, 1);
+  }
+
+  // 4. 擊殺判斷與 Mega 進化觸發
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    if (enemies[i].hp <= 0) {
+      battleState.killCount++;
+      enemies.splice(i, 1);
+
+      if (battleState.killCount >= 10 && typeof triggerMegaEvolution === 'function') {
+        triggerMegaEvolution();
+      }
+    }
+  }
+
+  // 5. 波數推進與下一波敵人在全場分佈初始化
+  if (enemies.length === 0) {
+    battleState.currentWaveIndex++;
+    if (battleState.currentWaveIndex < (battleState.waves?.length || 3)) {
+      const nextWaveRaw = battleState.waves[battleState.currentWaveIndex] || [];
+      
+      // 💡 推進到下一波時，同樣給予全場座標、加速屬性與隨機方向
+      battleState.enemies = nextWaveRaw.map(e => ({
+        ...e,
+        x: 10 + Math.random() * 80,
+        y: 15 + Math.random() * 35,
+        speed: 0.8 + Math.random() * 0.6,
+        vx: (Math.random() - 0.5) * 2,
+        vy: (Math.random() - 0.5) * 2
+      }));
+    } else {
+      endBattle(true, "成功摧毀所有敵方大軍！");
+      return;
+    }
+  }
+
+  // 重新繪製畫面
+  if (typeof renderDynamicStage === 'function') {
+    renderDynamicStage();
+  }
+}
+
+// ==================== 5. Mega 進化對話框與系統 (更新圖源) ====================
+
+const dualConfigs = {
+  6: ['mega-x', 'mega-y'],     // 噴火龍
+  150: ['mega-x', 'mega-y'],   // 超夢
+  646: ['mega-x', 'mega-y']    // 酋雷姆 (比照 X/Y 雙型態)
+};
+
+function triggerMegaEvolution() {
+  battleState.players.forEach(p => {
+    // 💡 修改點 1：加上 p.isMegaUnlocked，只有在強化頁面已解鎖的寶可夢才能觸發
+    if (p.canMega && p.isMegaUnlocked && !p.isMega && !p.megaTriggered) {
+      p.megaTriggered = true;
+
+      // 只有雙型態 (6, 150, 646) 會開啟選擇彈窗，甲賀忍蛙 (658) 等單一型態直接進化
+      if (dualConfigs[p.id]) {
+        openMegaSelectionDialog(p);
+      } else {
+        const defaultForm = p.megaForm || 'mega';
+        executeMega(p, defaultForm);
+      }
+    }
+  });
+}
+
+function openMegaSelectionDialog(player) {
+  const curId = player.id;
+  const curName = player.name || '寶可夢';
+
+  const dialogEl = document.getElementById('evoDialog');
+  const titleEl = document.getElementById('evoTitle');
+  const container = document.getElementById('evoOptions');
+
+  if (!dialogEl || !container) {
+    executeMega(player, dualConfigs[curId][0]);
+    return;
+  }
+
+  titleEl.innerText = `✨ ${curName} 的 Mega 進化`;
+  container.innerHTML = "";
+
+  dualConfigs[curId].forEach(type => {
+    const card = document.createElement('div');
+    card.className = 'evo-card';
+
+    // ⚡ Mega 預覽也交給 getPlayerSpriteUrl
+    // ✨ 會自動依照 player.useShiny 決定普通 / 異色 Shuffle
+    const bImg = getPlayerSpriteUrl({
+      ...player,
+      isMega: true,
+      megaForm: type
+    });
+
+    const formTag = type.replace('mega-', '').toUpperCase();
+    const displayName = `Mega ${curName} ${formTag}`;
+
+    card.innerHTML = `
+      <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 10px;">
+        <img src="${bImg}"
+             style="width:80px; height:80px; filter: drop-shadow(0 0 8px #ff007f);">
+      </div>
+      <p style="margin:8px 0 0; font-size:13px; color:#ff007f; font-weight:bold;">
+        ${displayName}
+      </p>
+    `;
+
+    card.onclick = () => {
+      executeMega(player, type);
+
+      if (typeof dialogEl.close === 'function') {
+        dialogEl.close();
+      } else {
+        dialogEl.style.display = 'none';
+      }
+    };
+
+    container.appendChild(card);
+  });
+
+  if (typeof dialogEl.showModal === 'function') {
+    dialogEl.showModal();
+  } else {
+    dialogEl.style.display = 'block';
+  }
+}
+
+function executeMega(player, megaFormKey) {
+  player.isMega = true;
+  player.megaForm = megaFormKey;
+
+  const pData = POKEMON_DATA.find(item => item.id === player.id);
+  if (pData) {
+    player.dps = calculatePlayerDamage(pData, { isMega: true });
+  }
+
+  console.log(`⚡ ${player.name} 已成功進化為 Mega 形態：${megaFormKey}`);
+}
+
+// 🎯 計算我方寶可夢的 shuffle 圖源 URL (依據 useShiny 動態切換原色/異色圖片庫)
+function getPlayerSpriteUrl(p) {
+  const paddedId = String(p.id).padStart(3, '0');
+  
+  // 💡 根據是否啟用異色，決定圖片倉庫網址前綴
+  const baseUrl = p.useShiny
+    ? 'https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/png/shuffle/'
+    : 'https://raw.githubusercontent.com/paulie0102-Bear/Bear/refs/heads/main/shuffle/';
+
+  // 普通型態 (例如: 006.png)
+  if (!p.isMega) {
+    return `${baseUrl}${paddedId}.png`;
+  }
+
+  // Mega 型態 (例如: 006-mega-x.png)
+  let megaSuffix = p.megaForm || 'mega';
+  if (!megaSuffix.startsWith('-')) {
+    megaSuffix = `-${megaSuffix}`;
+  }
+
+  return `${baseUrl}${paddedId}${megaSuffix}.png`;
+}
+
+
+// 💡 檢查是否達到三項滿級條件 (Lv.100 + 技能 Lv.10 + 6星)
+function isMaxedOut(p) {
+  return p && p.level >= 100 && p.skillLevel >= 10 && p.star >= 6;
+}
+
+// 💡 執行異色解鎖
+function unlockShiny() {
+  if (!selectedPokemon || selectedPokemon.isShinyUnlocked) return;
+
+  // 驗證是否達成條件
+  if (isMaxedOut(selectedPokemon)) {
+    selectedPokemon.isShinyUnlocked = true;
+    selectedPokemon.useShiny = true; // 解鎖後自動啟用異色
+
+    updateUpgradeUI();
+    
+    // 重新渲染圖鑑/隊伍列表
+    const activeTab = document.querySelector("#pokedexTabBar .tab-btn.active")?.dataset?.cat || 'all';
+    filterPokemonGrid("pokedexGrid", activeTab);
+
+    // 寫入 IndexedDB 存檔
+    if (typeof saveGameToDB === 'function') saveGameToDB();
+    
+    alert(`✨ 恭喜！已成功解鎖 ${selectedPokemon.name} 的異色型態！`);
+  } else {
+    alert("解鎖條件未達成！需要將【等級達 Lv.100】、【技能達 Lv.10】且【培育至 6星】。");
+  }
+}
+
+// 💡 切換異色 / 原色外觀
+function toggleShiny() {
+  if (!selectedPokemon || !selectedPokemon.isShinyUnlocked) return;
+
+  // 切換啟用狀態 (true <-> false)
+  selectedPokemon.useShiny = !selectedPokemon.useShiny;
+
+  updateUpgradeUI();
+
+  // 重新渲染圖鑑網格
+  const activeTab = document.querySelector("#pokedexTabBar .tab-btn.active")?.dataset?.cat || 'all';
+  filterPokemonGrid("pokedexGrid", activeTab);
+
+  // 寫入存檔
+  if (typeof saveGameToDB === 'function') saveGameToDB();
+}
+
+
+// ==================== 6. 戰場畫面 DOM 渲染 ====================
+
+function renderDynamicStage() {
+  const stageEl = document.getElementById("battleStage");
+  if (!stageEl) return;
+
+  let html = '';
+
+  // 1. 渲染 AOE 衝擊波與打擊特效（放在最底層）
+  battleState.effects.forEach(eff => {
+    if (eff.type === 'aoe_wave') {
+      html += `
+        <div class="skill-aoe-wave" style="
+          left: ${eff.x}%; top: ${eff.y}%;
+          border-color: ${eff.color};
+        "></div>
+      `;
+    } else if (eff.type === 'hit') {
+      html += `
+        <div class="hit-spark" style="
+          left: ${eff.x}%; top: ${eff.y}%;
+          background: ${eff.color};
+        "></div>
+      `;
+    }
+  });
+
+  // 2. 合併我方與敵人，並依據 Y 座標從小到大排序（Y-Sorting 深度排序）
+  // 靠上面的角色 (Y 較小) 先渲染，靠下面的角色 (Y 較大) 後渲染，後渲染者會擋住前者
+  const sortedUnits = [
+    ...battleState.enemies.map(e => ({ ...e, isEnemy: true })),
+    ...battleState.players.map(p => ({ ...p, isEnemy: false }))
+  ].sort((a, b) => a.y - b.y);
+
+  // 3. 依據排序後的順序進行繪製，並加上動態 z-index 雙重保險
+  sortedUnits.forEach(unit => {
+    const zIndex = Math.floor(unit.y * 10); // Y 軸越大，z-index 越高
+
+    if (unit.isEnemy) {
+      // 渲染敵人
+      const gifUrl = getPokeGifUrl(unit.pokeId);
+      const fallbackUrl = getImgUrl(unit.pokeId);
+      const hpPercent = Math.max(0, (unit.hp / unit.maxHp) * 100);
+
+      html += `
+        <div class="enemy-single-wrapper ${unit.type}" style="
+          left: ${unit.x}%; top: ${unit.y}%; 
+          width: ${unit.size}px; height: ${unit.size}px;
+          z-index: ${zIndex};
+        ">
+          <div class="hp-bar-mini">
+            <div class="hp-bar-fill" style="width: ${hpPercent}%;"></div>
+          </div>
+          <img class="battle-sprite-img" src="${gifUrl}" 
+               onerror="this.onerror=null; this.src='${fallbackUrl}';">
+        </div>
+      `;
+    } else {
+      // 渲染我方隊員
+      const spriteUrl = getPlayerSpriteUrl(unit);
+
+      html += `
+        <div class="player-sprite-wrapper ${unit.isMega ? 'mega-active' : ''}" style="
+          left: ${unit.x}%; top: ${unit.y}%;
+          z-index: ${zIndex};
+        ">
+          ${unit.isMega ? '<div class="mega-tag-aura">MEGA</div>' : ''}
+          <img class="battle-sprite-img" src="${spriteUrl}" alt="${unit.name}">
+        </div>
+      `;
+    }
+  });
+
+  stageEl.innerHTML = html;
+}
+
+// ==================== 結算與獎勵系統 (修正版) ====================
+
+function startTimers() {
+  clearInterval(battleState.timerInterval);
+  clearInterval(battleState.loopInterval);
+
+  const timerEl = document.getElementById("battleTimer");
+  if (timerEl) timerEl.innerText = `⏳ 剩餘時間: ${battleState.timer}s`;
+
+  // 每秒倒數
+  battleState.timerInterval = setInterval(() => {
+    if (!battleState.active) return;
+    
+    battleState.timer--;
+    if (timerEl) timerEl.innerText = `⏳ 剩餘時間: ${battleState.timer}s`;
+
+    if (battleState.timer <= 0) {
+      endBattle(false, "時間到！未能在規定時間內清除所有敵人。");
+    }
+  }, 1000);
+
+  // 戰鬥主邏輯迴圈 (每 100ms 一次)
+  battleState.loopInterval = setInterval(() => {
+    if (!battleState.active) return;
+    updateBattleLoop();
+  }, 100);
+}
+
+async function endBattle(isWin, msg) {
+  battleState.active = false;
+  clearInterval(battleState.timerInterval);
+  clearInterval(battleState.loopInterval);
+
+  // 💡 1. 勝利時解鎖下一層關卡 (需在存檔前完成)
+  if (isWin && battleState.dungeon) {
+    // 當通關層數 >= 目前最大解鎖層數時，解鎖下一層（上限為 10 層）
+    if (battleState.floorNum >= battleState.dungeon.maxUnlockedFloor) {
+      battleState.dungeon.maxUnlockedFloor = Math.min(10, battleState.floorNum + 1);
+    }
+
+    // 同步更新 currentDungeon 的資料
+    if (typeof currentDungeon !== 'undefined' && currentDungeon && currentDungeon.id === battleState.dungeon.id) {
+      currentDungeon.maxUnlockedFloor = battleState.dungeon.maxUnlockedFloor;
+    }
+  }
+
+  // 2. 計算關卡獎勵
+  let rewards = { exp: 0, coin: 0 };
+  if (isWin && battleState.dungeon && typeof applyDungeonRewards === 'function') {
+    rewards = applyDungeonRewards(battleState.dungeon, battleState.floorNum);
+  }
+
+  // 3. 將獎勵與剛才更新的關卡進度一併寫入存檔
+  if (isWin && typeof applyRewardsToStateAndSave === 'function') {
+    await applyRewardsToStateAndSave(rewards);
+  }
+
+  // 💡 4. 重新渲染關卡列表 UI，讓畫面上原本鎖定的按鈕變為已解鎖
+  if (typeof renderFloorList === 'function') {
+    renderFloorList();
+  }
+
+  // 5. 顯示結算畫面
+  showSettlementModal(isWin, rewards, msg);
+}
+
+function showSettlementModal(isWin, rewards, msg) {
+  let modalEl = document.getElementById("settlementModal");
+
+  if (!modalEl) {
+    modalEl = document.createElement("div");
+    modalEl.id = "settlementModal";
+    modalEl.className = "settlement-overlay";
+    document.body.appendChild(modalEl);
+  }
+
+  let itemsHtml = '';
+  if (isWin && rewards) {
+    // 1. 高級球
+    if (rewards.pokeBall) {
+      itemsHtml += `
+        <div class="reward-item">
+          <img src="${ITEM_ICONS.pokeBall}" class="reward-icon-img" alt="高級球">
+          <span>高級球 x${rewards.pokeBall}</span>
+        </div>`;
+    }
+    // 2. 大師球
+    if (rewards.masterBall) {
+      itemsHtml += `
+        <div class="reward-item">
+          <img src="${ITEM_ICONS.masterBall}" class="reward-icon-img" alt="大師球">
+          <span>大師球 x${rewards.masterBall}</span>
+        </div>`;
+    }
+    // 3. Mega碎片
+    if (rewards.megaShard) {
+      itemsHtml += `
+        <div class="reward-item">
+          <img src="${ITEM_ICONS.megaShard}" class="reward-icon-img" alt="Mega碎片">
+          <span>Mega碎片 x${rewards.megaShard}</span>
+        </div>`;
+    }
+    // 4. 萬能碎片
+    if (rewards.universalShard) {
+      itemsHtml += `
+        <div class="reward-item">
+          <img src="${ITEM_ICONS.universalShard}" class="reward-icon-img" alt="萬能碎片">
+          <span>萬能碎片 x${rewards.universalShard}</span>
+        </div>`;
+    }
+    if (!itemsHtml) {
+      itemsHtml = `<div class="reward-item text-muted">無獲得特殊道具</div>`;
+    }
+  } else {
+    itemsHtml = `<div class="reward-item text-muted">無獲得任何獎勵</div>`;
+  }
+
+  modalEl.innerHTML = `
+    <div class="settlement-card ${isWin ? 'win' : 'lose'}">
+      <h2 class="settlement-title">${isWin ? '🏆 戰鬥勝利！' : '☠️ 戰鬥失敗！'}</h2>
+      <p class="settlement-msg">${msg}</p>
+
+      <div class="settlement-rewards">
+        <div class="reward-row">
+          <img src="${ITEM_ICONS.exp}" class="reward-icon-img" alt="經驗值">
+          <span>經驗值:</span> <strong>+${(rewards.exp || 0).toLocaleString()}</strong>
+        </div>
+        <div class="reward-row">
+          <img src="${ITEM_ICONS.coin}" class="reward-icon-img" alt="金幣">
+          <span>獲得金幣:</span> <strong>+${(rewards.coin || 0).toLocaleString()}</strong>
+        </div>
+        <div class="reward-items-box">
+          <div class="reward-subtitle">🎁 獲得道具：</div>
+          <div class="reward-items-grid">
+            ${itemsHtml}
+          </div>
+        </div>
+      </div>
+
+      <button class="confirm-btn" onclick="closeSettlementAndExit()">確認並返回</button>
+    </div>
+  `;
+
+  modalEl.style.display = "flex";
+}
+
+function closeSettlementAndExit() {
+  const modalEl = document.getElementById("settlementModal");
+  if (modalEl) modalEl.style.display = "none";
+  exitBattle();
+}
+
+// ==================== 全域資源圖示 ====================
+
+const ITEM_ICONS = {
+  exp: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rare-candy.png",
+  coin: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/amulet-coin.png",
+  pokeBall: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png", // 高級球
+  masterBall: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png",
+  megaShard: "https://raw.githubusercontent.com/msikma/pokesprite/master/items/key-item/key-stone.png",
+  universalShard: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pp-max.png"
+};
+
+function parseResValue(id) {
+  const el = document.getElementById(id);
+  if (!el) return 0;
+  return parseInt(el.innerText.replace(/,/g, '') || "0", 10);
+}
+
+function setResValue(id, value) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.innerText = Math.max(0, value).toLocaleString();
+  }
+}
+
+// 寫入 DOM 與 IndexedDB 存檔
+async function applyRewardsToStateAndSave(rewards) {
+  if (!rewards) return;
+
+  if (rewards.exp) {
+    const curExp = parseResValue("resExp");
+    setResValue("resExp", curExp + rewards.exp);
+  }
+  if (rewards.coin) {
+    const curCoin = parseResValue("resCoin");
+    setResValue("resCoin", curCoin + rewards.coin);
+  }
+  if (rewards.pokeBall) {
+    const curBall = parseResValue("resPokeBall");
+    setResValue("resPokeBall", curBall + rewards.pokeBall);
+  }
+  if (rewards.masterBall) {
+    const curMaster = parseResValue("resMasterBall");
+    setResValue("resMasterBall", curMaster + rewards.masterBall);
+  }
+  if (rewards.megaShard) {
+    const curMega = parseResValue("resMegaShard");
+    setResValue("resMegaShard", curMega + rewards.megaShard);
+  }
+  if (rewards.universalShard) {
+    const curUni = parseResValue("resUniversalShard");
+    setResValue("resUniversalShard", curUni + rewards.universalShard);
+  }
+
+  if (typeof saveGameToDB === 'function') {
+    await saveGameToDB();
+    console.log("💾 獎勵已成功更新並發送至 IndexedDB 存檔！");
+  }
+}
+
+// 計算副本獎勵
+function applyDungeonRewards(dungeon, floorNum) {
+  const exp = 5000 * floorNum;
+  const coin = 1000 * floorNum;
+  
+  let rewards = { exp, coin };
+
+  if (dungeon && dungeon.isEvent) {
+    rewards.masterBall = 1;
+    rewards.megaShard = (floorNum >= 6 && floorNum <= 10) ? 1 : 0;
+  } else {
+    rewards.pokeBall = 5; // 普通副本給 5 個高級球
+  }
+
+  if (typeof playerState !== 'undefined') {
+    playerState.exp = (playerState.exp || 0) + rewards.exp;
+    playerState.coin = (playerState.coin || 0) + rewards.coin;
+    if (rewards.pokeBall) playerState.pokeBall = (playerState.pokeBall || 0) + rewards.pokeBall;
+    if (rewards.masterBall) playerState.masterBall = (playerState.masterBall || 0) + rewards.masterBall;
+    if (rewards.megaShard) playerState.megaShard = (playerState.megaShard || 0) + rewards.megaShard;
+    if (rewards.universalShard) playerState.universalShard = (playerState.universalShard || 0) + rewards.universalShard;
+  }
+
+  return rewards;
+}
+
+function updateResourceUI(elementId, addAmount) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  const currentVal = parseInt(el.innerText.replace(/,/g, ''), 10) || 0;
+  el.innerText = (currentVal + addAmount).toLocaleString();
+}
+
+function renderTabs(tabBarId, targetGridId) {
+  const tabBar = document.getElementById(tabBarId);
+  if (!tabBar) return;
+  tabBar.innerHTML = CATEGORIES.map((cat, idx) => `
+    <button class="tab-btn ${idx === 0 ? 'active' : ''}" onclick="selectTab(this, '${cat.id}', '${tabBarId}', '${targetGridId}')">
+      ${cat.name}
+    </button>
+  `).join('');
+}
+
+function selectTab(btn, catId, tabBarId, targetGridId) {
+  const parent = document.getElementById(tabBarId);
+  parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterPokemonGrid(targetGridId, catId);
+}
+
+function clickPokemon(id) {
+  const p = POKEMON_DATA.find(item => item.id === id);
+  if (!p || !p.unlocked) return;
+  selectedPokemon = p;
+  showUpgradeModal();
+}
+
+function showUpgradeModal() {
+  if (!selectedPokemon) return;
+  document.getElementById("upgradeTitle").innerText = `${selectedPokemon.name} - 強化`;
+  document.getElementById("upgradeImg").src = getImgUrl(selectedPokemon.id);
+  updateUpgradeUI();
+  openModal("upgradeModal");
+}
+
+
+
+
+
+// 等級提升：消耗經驗值 (當前等級 * 100)
+function levelUp() {
+  if (!selectedPokemon) return;
+  if (selectedPokemon.level >= 100) return;
+
+  const cost = selectedPokemon.level * 100;
+  const expEl = document.getElementById("resExp");
+  
+  let currentExp = 0;
+  if (expEl) {
+    currentExp = parseInt(expEl.innerText.replace(/,/g, '')) || 0;
+  }
+
+  if (currentExp >= cost) {
+    currentExp -= cost;
+    if (expEl) {
+      expEl.innerText = currentExp.toLocaleString();
+    }
+
+    selectedPokemon.level++;
+    updateUpgradeUI();
+    saveGameToDB(); // 自動存檔
+  } else {
+    alert(`經驗值不足！升到下一等需要 ${cost.toLocaleString()} 點經驗。`);
+  }
+}
+
+// 技能等級提升：消耗金幣 (當前等級 * 100)
+function skillUp() {
+  if (!selectedPokemon) return;
+  if (selectedPokemon.skillLevel >= 10) return;
+
+  const cost = selectedPokemon.skillLevel * 10000;
+  const coinEl = document.getElementById("resCoin");
+  
+  let currentCoin = 0;
+  if (coinEl) {
+    currentCoin = parseInt(coinEl.innerText.replace(/,/g, '')) || 0;
+  }
+
+  if (currentCoin >= cost) {
+    currentCoin -= cost;
+    if (coinEl) {
+      coinEl.innerText = currentCoin.toLocaleString();
+    }
+
+    selectedPokemon.skillLevel++;
+    updateUpgradeUI();
+    saveGameToDB(); // 自動存檔
+  } else {
+    alert(`金幣不足！升級技能需要 ${cost.toLocaleString()} 金幣。`);
+  }
+}
+
+function openModal(id) {
+  const modalElement = document.getElementById(id);
+
+  // 1. 安全檢查：如果找不到此 id 的彈窗，印出警告並中斷，防止 JS 報錯崩潰
+  if (!modalElement) {
+    console.error(`❌ [openModal] 找不到 ID 為 "#${id}" 的 Modal 元素！請檢查 HTML。`);
+    return;
+  }
+
+  // 2. 加上 active 樣式類別，並確保 display 開啟 (支援 flex 居中對齊)
+  modalElement.classList.add('active');
+  modalElement.style.display = 'flex';
+
+  // 3. 原本的邏輯：如果打開的是抽卡 Modal，自動刷新介面
+  if (id === 'catchModal' && typeof updateGachaUI === 'function') {
+    updateGachaUI();
+  }
+}
+
+function closeModal(id) {
+  const modalElement = document.getElementById(id);
+  if (!modalElement) return;
+
+  modalElement.classList.remove('active');
+  modalElement.style.display = 'none';
+}
+function openDungeon(name) {
+  document.getElementById("dungeonTitle").innerText = name;
+  openModal("dungeonModal");
+}
+
+function openFloorAndCloseDungeon() {
+  closeModal('dungeonModal');
+  if (currentDungeon) {
+    openFloorModal(DUNGEONS.indexOf(currentDungeon));
+  }
+}
+
+
+// 💡 統一取得 PokeAPI 官方繪圖網址
+function getPokemonImgUrl(id) {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
+}
+
+/**
+ * 執行抽卡
+ * @param {string} type - 'event' (活動池) 或 'standard' (一般池)
+ * @param {number} count - 抽數 (1 或 10)
+ */
+function drawGacha(type, count = 1) {
+  const isEvent = type === 'event';
+  const resId = isEvent ? 'resMasterBall' : 'resPokeBall';
+  const ballName = isEvent ? '大師球' : '高級球';
+  const pityMax = isEvent ? 30 : 50;
+
+  let currentBalls = getResValue(resId);
+
+  // 1. 檢查球數
+  if (currentBalls < count) {
+    alert(`【${ballName}】不足！需要 ${count} 個（目前有 ${currentBalls} 個）。`);
+    return;
+  }
+
+  // 2. 一般池自選 UP 檢查
+  if (!isEvent && !gachaState.standardSelectedUpId) {
+    alert("請先指定一般池的自選 UP 神獸！");
+    openSelectUpModal(); // 自動開啟選單
+    return;
+  }
+
+  // 3. 確定當前 UP 神獸 ID (類別 1 或 類別 3)
+  const currentUpId = isEvent 
+    ? EVENT_ROTATION[currentEventIndex].id 
+    : gachaState.standardSelectedUpId;
+
+  // 4. 扣除道具球
+  setResValue(resId, currentBalls - count);
+
+  // 💡 關鍵修正：建立「基礎通用池 (類別 3 + 類別 4)」
+  // 取得所有活動神獸 ID (包含當期與非當期，即類別 1 + 2)
+  const allEventLegendIds = EVENT_ROTATION.map(item => item.id);
+
+  // 從總資料庫中剔除所有活動神獸，確保 95% 歪卡絕不會抽到「非當期活動神獸 (類別 2)」
+  const baseGeneralPool = POKEMON_DATABASE.filter(p => !allEventLegendIds.includes(p.id));
+
+  // 防呆：若過濾後池子為空，備用回原本資料庫
+  const drawPool = baseGeneralPool.length > 0 ? baseGeneralPool : POKEMON_DATABASE;
+
+  const results = [];
+  let totalShardGained = 0;
+
+  // 5. 進行抽卡算式
+  for (let i = 0; i < count; i++) {
+    let rolledId = null;
+
+    if (isEvent) gachaState.eventPityCount++;
+    else gachaState.standardPityCount++;
+
+    const currentPity = isEvent ? gachaState.eventPityCount : gachaState.standardPityCount;
+
+    // A. 保底判斷
+    if (currentPity >= pityMax) {
+      rolledId = currentUpId;
+    } else {
+      // B. 5% 概率 UP / 95% 從基礎通用池 (類別 3 + 類別 4) 抽取
+      if (Math.random() < 0.05) {
+        rolledId = currentUpId;
+      } else {
+        const randomIndex = Math.floor(Math.random() * drawPool.length);
+        rolledId = drawPool[randomIndex].id;
+      }
+    }
+
+    // C. 抽中 UP 時重置保底
+    if (rolledId === currentUpId) {
+      if (isEvent) gachaState.eventPityCount = 0;
+      else gachaState.standardPityCount = 0;
+    }
+
+    // D. 尋找與更新 POKEMON_DATA 狀態
+    let targetPokemon = POKEMON_DATA.find(p => p.id === rolledId);
+    const dbInfo = PokemonAPI.getById(rolledId);
+
+    // 如果 POKEMON_DATA 找不到，建立預設資料結構
+    if (!targetPokemon) {
+      targetPokemon = {
+        id: rolledId,
+        unlocked: false,
+        level: 1,
+        skillLevel: 1,
+        star: 1,
+        isMegaUnlocked: false
+      };
+      POKEMON_DATA.push(targetPokemon);
+    }
+
+    const isDuplicate = targetPokemon.unlocked === true;
+
+    if (isDuplicate) {
+      // 已擁有 ➔ 獲得 25 萬能碎片
+      totalShardGained += 25;
+    } else {
+      // 未擁有 ➔ 解鎖寶可夢
+      targetPokemon.unlocked = true;
+    }
+
+    results.push({
+      info: dbInfo,
+      isUp: rolledId === currentUpId,
+      isDuplicate: isDuplicate
+    });
+  }
+
+  // 發放獲得的萬能碎片
+  if (totalShardGained > 0) {
+    const currentShard = getResValue("resUniversalShard");
+    setResValue("resUniversalShard", currentShard + totalShardGained);
+  }
+
+  // 6. 刷新介面與存檔
+  updateGachaUI();
+  saveGameToDB();
+
+  // 7. 展示結果
+  showGachaResultModal(results, totalShardGained);
+}
+
+// 💡 更新介面顯示 (同時更新活動池與常駐池)
+function updateGachaUI() {
+  const eventPityEl = document.getElementById("eventPityText");
+  const standardPityEl = document.getElementById("standardPityText");
+  const currentEventUpEl = document.getElementById("currentEventUpName");
+  const currentStandardUpEl = document.getElementById("currentStandardUpName");
+  const eventUpImgEl = document.getElementById("eventUpImg");
+  const standardUpImgEl = document.getElementById("standardUpImg");
+
+  // 更新保底次數顯示
+  if (eventPityEl) eventPityEl.innerText = `${gachaState.eventPityCount || 0}/30`;
+  if (standardPityEl) standardPityEl.innerText = `${gachaState.standardPityCount || 0}/50`;
+
+  // 1. 活動池 UP 顯示與圖片
+  const currentEventObj = EVENT_ROTATION[currentEventIndex];
+  if (currentEventObj) {
+    if (currentEventUpEl) currentEventUpEl.innerText = currentEventObj.name;
+    if (eventUpImgEl) eventUpImgEl.src = getPokemonImgUrl(currentEventObj.id);
+  }
+
+  // 2. 一般池自選 UP 顯示與圖片 (直接從 POKEMON_DATABASE 拿資料)
+  if (gachaState.standardSelectedUpId) {
+    // 優先使用 POKEMON_DATABASE，若有 PokemonAPI.getById 也能作為備用
+    const stdObj = POKEMON_DATABASE.find(p => p.id === gachaState.standardSelectedUpId) 
+                || (typeof PokemonAPI !== "undefined" && PokemonAPI.getById(gachaState.standardSelectedUpId));
+
+    if (stdObj) {
+      if (currentStandardUpEl) currentStandardUpEl.innerText = stdObj.name;
+      if (standardUpImgEl) {
+        standardUpImgEl.src = getPokemonImgUrl(stdObj.id);
+        standardUpImgEl.style.display = "block";
+      }
+    }
+  } else {
+    if (currentStandardUpEl) currentStandardUpEl.innerText = "未選擇";
+    if (standardUpImgEl) {
+      standardUpImgEl.src = "";
+      standardUpImgEl.style.display = "none";
+    }
+  }
+}
+
+
+// 2. 動態從 POKEMON_DATABASE 取得完整的次級神獸物件清單
+function getSubLegendList() {
+  return SUB_LEGEND_IDS.map(id => {
+    return POKEMON_DATABASE.find(p => p.id === id) || { id, name: `寶可夢#${id}` };
+  });
+}
+
+// 💡 開啟一般池自選 UP 選單 (網格滿版優化版 - 不重置保底版本)
+function openSelectUpModal() {
+  const container = document.getElementById("selectUpContainer");
+  
+  if (!container) {
+    console.error("❌ [openSelectUpModal] 找不到 #selectUpContainer 元素！");
+    return;
+  }
+
+  // 1. 清空內容
+  container.innerHTML = "";
+
+  // 2. 自動在容器上方加入/更新提示橫幅 (填補頂部留白)
+  let banner = document.getElementById("selectUpBanner");
+  if (!banner) {
+    banner = document.createElement("div");
+    banner.id = "selectUpBanner";
+    banner.className = "select-up-banner";
+    container.parentNode.insertBefore(banner, container);
+  }
+
+  // 取得當前已選擇的神獸名稱
+  const currentSelectedObj = POKEMON_DATABASE.find(p => p.id === gachaState.standardSelectedUpId);
+  const currentName = currentSelectedObj ? currentSelectedObj.name : "未選擇";
+
+  banner.innerHTML = `
+    <p style="margin:0; color:#94a3b8; font-size:12px;">目前指定 UP：<b style="color:#00d2ff;">${currentName}</b></p>
+    <p style="font-size:11px; color:#10b981; margin:2px 0 0;">切換 UP 保留常駐池保底進度</p>
+  `;
+
+  // 3. 渲染次級神獸清單
+  const subLegendList = SUB_LEGEND_IDS.map(id => {
+    return POKEMON_DATABASE.find(p => p.id === id) || { id, name: `寶可夢#${id}` };
+  });
+
+  subLegendList.forEach(item => {
+    const isSelected = gachaState.standardSelectedUpId === item.id;
+    const card = document.createElement("div");
+    card.className = `up-select-card ${isSelected ? 'selected' : ''}`;
+    
+    // 💡 寬度設為 100%（由 CSS Grid 自動算三分之一寬度），拉高 min-height
+    card.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 6px;
+      border: 2px solid ${isSelected ? '#00d2ff' : '#334155'};
+      border-radius: 12px;
+      cursor: pointer;
+      text-align: center;
+      background: ${isSelected ? 'linear-gradient(145deg, #2a3b50, #1e293b)' : 'rgba(30, 41, 59, 0.8)'};
+      width: 100%;
+      min-height: 115px;
+      box-sizing: border-box;
+      box-shadow: ${isSelected ? '0 0 12px rgba(0,210,255,0.4)' : '0 4px 8px rgba(0,0,0,0.25)'};
+      transition: all 0.2s ease;
+      transform: ${isSelected ? 'scale(1.03)' : 'scale(1)'};
+    `;
+
+    card.innerHTML = `
+      <img src="${getPokemonImgUrl(item.id)}" style="width:65px; height:65px; object-fit:contain; filter:drop-shadow(0 2px 5px rgba(0,0,0,0.4));" alt="${item.name}" />
+      <p style="margin:8px 0 0; color:#fff; font-size:12px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">${item.name}</p>
+    `;
+
+    card.onclick = () => {
+      gachaState.standardSelectedUpId = item.id;
+      // 💡 關鍵修改：移除原本的 gachaState.standardPityCount = 0; 以保留保底進度
+      
+      if (typeof updateGachaUI === "function") updateGachaUI(); 
+      if (typeof saveGameToDB === "function") saveGameToDB();
+      if (typeof closeModal === "function") closeModal("selectUpModal");
+    };
+
+    container.appendChild(card);
+  });
+
+  // 4. 開啟彈窗
+  if (typeof openModal === "function") {
+    openModal("selectUpModal");
+  } else {
+    console.error("❌ [openSelectUpModal] 找不到 openModal 函式！");
+  }
+}
+
+
+// 💡 修改：手遊風格開卡結果彈窗 (取代原本的 alert)
+function showGachaResultModal(results, totalShard) {
+  const container = document.getElementById("gachaResultContainer");
+  const shardEl = document.getElementById("gachaResultShard");
+
+  if (!container) {
+    // 萬一找不到視窗元件，降級使用 alert
+    let msg = "🎉 【抽卡結果】\n";
+    results.forEach((r, idx) => {
+      const name = r.info ? r.info.name : '寶可夢';
+      msg += `${idx + 1}. ${r.isUp ? '[UP!] ' : ''}${name} ${r.isDuplicate ? '(轉換為碎片+25)' : '[NEW!]'}\n`;
+    });
+    alert(msg);
+    return;
+  }
+
+  container.innerHTML = "";
+  results.forEach(r => {
+    const id = r.info ? r.info.id : 1;
+    const name = r.info ? r.info.name : '寶可夢';
+    
+    const card = document.createElement("div");
+    card.className = "gacha-result-card";
+    card.innerHTML = `
+      ${r.isUp ? '<span class="res-badge up-badge">UP!</span>' : ''}
+      ${!r.isDuplicate ? '<span class="res-badge new-badge">NEW</span>' : ''}
+      <img src="${getPokemonImgUrl(id)}" class="res-img" alt="${name}" />
+      <div class="res-name">${name}</div>
+      ${r.isDuplicate ? '<div class="res-shard-tag">碎片 +25</div>' : ''}
+    `;
+    container.appendChild(card);
+  });
+
+  if (shardEl) {
+    shardEl.innerText = totalShard > 0 ? `🧩 獲得萬能碎片 x${totalShard}` : '';
+  }
+
+  openModal("gachaResultModal");
+}
+
+// 點擊頁籤滑動到對應卡池 (index: 0 為活動池, 1 為常駐池)
+function scrollToGacha(index) {
+  const slider = document.getElementById("gachaSlider");
+  if (!slider) return;
+  
+  const cardWidth = slider.clientWidth;
+  slider.scrollTo({
+    left: cardWidth * index,
+    behavior: "smooth"
+  });
+
+  updateTabHighlight(index);
+}
+
+// 更新頁籤亮燈狀態
+// 切換頁籤高亮 與 卡池顯示
+function switchGachaTab(activeIndex) {
+  const tabs = document.querySelectorAll(".gacha-tabs .tab-btn");
+  const cards = document.querySelectorAll("#gachaSlider .gacha-card");
+
+  // 1. 切換標籤高亮 (active)
+  tabs.forEach((tab, idx) => {
+    tab.classList.toggle("active", idx === activeIndex);
+  });
+
+  // 2. 切換卡池顯示 (active)
+  cards.forEach((card, idx) => {
+    card.classList.toggle("active", idx === activeIndex);
+  });
+}
+
+// 監聽頁籤點擊事件
+document.addEventListener("DOMContentLoaded", () => {
+  const tabs = document.querySelectorAll(".gacha-tabs .tab-btn");
+
+  // 為每一個標籤加上點擊監聽
+  tabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => {
+      switchGachaTab(index);
+    });
+  });
+});
+
+
+
+// --- 換手機：下載存檔 (JSON) ---
+async function exportSaveFile() {
+  try {
+    const db = await openDatabase();
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.get("current_save");
+
+    request.onsuccess = () => {
+      const data = request.result;
+      if (!data) {
+        alert("目前沒有可匯出的存檔資料！");
+        return;
+      }
+
+      const jsonStr = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pokemaster_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+  } catch (e) {
+    console.error("匯出存檔失敗", e);
+    alert("匯出存檔發生錯誤！");
+  }
+}
+
+// --- 換手機：上傳存檔還原 (JSON) ---
+function importSaveFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.pokemons) {
+        alert("存檔格式錯誤，無法識別！");
+        return;
+      }
+
+      const db = await openDatabase();
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      store.put(data, "current_save");
+
+      tx.oncomplete = async () => {
+        await loadGameFromDB();
+        filterPokemonGrid("pokedexGrid", "all");
+        filterPokemonGrid("teamGrid", "all");
+        alert("存檔匯入成功！遊戲進度已更新。");
+      };
+    } catch (err) {
+      console.error("解析存檔檔案失敗", err);
+      alert("存檔檔案損毀或格式不正確！");
+    }
+  };
+  reader.readAsText(file);
+}
+
+  </script>
+
+<!-- 特殊 Mega / 型態變換選擇對話框 -->
+<dialog id="evoDialog" class="evo-modal">
+  <div class="evo-modal-content">
+    <h3 id="evoTitle" class="evo-title">✨ 進化型態選擇</h3>
+    <div id="evoOptions" class="evo-options-grid"></div>
+    <button class="evo-close-btn" onclick="document.getElementById('evoDialog').close()">取消</button>
+  </div>
+</dialog>
+
+
+</body>
+</html>
