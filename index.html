@@ -16,7 +16,7 @@
   --bg-card: rgba(255, 255, 255, 0.08);
   --border-color: rgba(255, 255, 255, 0.1);
   --border-color-hover: rgba(255, 255, 255, 0.2);
-  
+
   /* 文字色彩 */
   --text-primary: #ffffff;
   --text-secondary: #94a3b8;
@@ -50,9 +50,11 @@
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
+
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 
 /* ==========================================================================
    2. 基礎重置與全局設定 (Reset & Base Styles)
@@ -78,9 +80,16 @@ html {
   touch-action: pan-y;
 }
 
-
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+
   background-color: var(--bg-primary);
   color: var(--text-primary);
 
@@ -100,11 +109,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* ★ 防止 WebView 下拉/上拉 overscroll */
+  /* 防止 WebView 下拉 / 上拉 overscroll */
   overscroll-behavior: none;
   overscroll-behavior-y: none;
 
-  /* ★ 允許正常上下滑動 */
+  /* 允許正常上下滑動 */
   touch-action: pan-y;
 }
 
@@ -114,16 +123,20 @@ body {
   width: 5px;
   height: 5px;
 }
+
 ::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.15);
 }
+
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 10px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.35);
 }
+
 
 /* ==========================================================================
    3. 頂部資源列 (Resources Bar)
@@ -132,12 +145,17 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(2, auto);
+
   background: rgba(30, 41, 59, 0.9);
+
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+
   border-bottom: 1px solid var(--border-color);
+
   padding: 8px 12px;
   gap: 8px 4px;
+
   z-index: var(--z-header);
 }
 
@@ -146,21 +164,27 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 2px;
+
   font-size: 11px;
   font-weight: 600;
+
   color: #e2e8f0;
 }
 
 .resource-icon {
   width: 24px;
   height: 24px;
+
   object-fit: contain;
+
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
+
 
 /* ==========================================================================
    4. 主頁面佈局 (Home Layout & Dungeons)
    ========================================================================== */
+
 .home-container {
   flex: 1;
   min-height: 0;
@@ -169,122 +193,915 @@ body {
   flex-direction: column;
   justify-content: space-between;
 
-  padding: 16px;
+  padding: 14px;
 
   overflow-y: auto;
   overflow-x: hidden;
 
-  /* ★ 關鍵 */
   overscroll-behavior-y: contain;
 
-  /* ★ Android / WebView */
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
 }
-
 
 .top-spacer {
   height: 0.5vh;
 }
 
+
+/* ==========================================================================
+   副本區
+   ========================================================================== */
+
 .dungeon-list {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  width: 100%;
+  overflow: visible;
 }
 
+/* ==========================================================================
+   通用副本卡片
+   ========================================================================== */
+
 .dungeon-card {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  min-width: 0;
+  min-height: 108px;
+  padding: 14px;
   border-radius: var(--radius-lg);
   background: var(--bg-card);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  box-shadow:
+    0 5px 18px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   cursor: pointer;
-  transition: transform var(--transition-fast), background var(--transition-normal);
-  min-height: 80px;
+  overflow: hidden;
+  isolation: isolate;
+  transform: translateZ(0);
+  transition:
+    transform var(--transition-fast),
+    background var(--transition-normal),
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
+/* 卡片表面高光 */
+.dungeon-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    linear-gradient(
+      120deg,
+      rgba(255, 255, 255, 0.055),
+      transparent 35%,
+      transparent 68%,
+      rgba(255, 255, 255, 0.025)
+    );
+  opacity: 0.8;
+}
+
+/* 卡片右側柔和光源 */
+.dungeon-card::after {
+  content: "";
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  right: -55px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.09) 0%,
+      rgba(255, 255, 255, 0.035) 35%,
+      transparent 72%
+    );
+  filter: blur(4px);
+  opacity: 0.8;
+}
+
+/* 點擊 */
 .dungeon-card:active {
-  transform: scale(0.98);
+  transform: scale(0.975);
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-.dungeon-card.event-card {
-  grid-column: span 2;
-  padding: 14px 20px;
+/* ==========================================================================
+   Pokémon 三層視覺
+   ========================================================================== */
+
+.dungeon-art {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
 }
 
-/* 副本屬性色彩漸層 */
-.dungeon-card.event {
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(147, 51, 234, 0.2));
-  border-color: var(--elem-event);
-}
-.dungeon-card.fire {
-  background: linear-gradient(135deg, rgba(248, 113, 113, 0.4), rgba(220, 38, 38, 0.2));
-  border-color: var(--elem-fire);
-}
-.dungeon-card.earth {
-  background: linear-gradient(135deg, rgba(74, 222, 128, 0.4), rgba(22, 163, 74, 0.2));
-  border-color: var(--elem-earth);
-}
-.dungeon-card.water {
-  background: linear-gradient(135deg, rgba(96, 165, 250, 0.4), rgba(37, 99, 235, 0.2));
-  border-color: var(--elem-water);
-}
-.dungeon-card.wind {
-  background: linear-gradient(135deg, rgba(250, 204, 21, 0.4), rgba(202, 138, 4, 0.2));
-  border-color: var(--elem-wind);
+/* 屬性能量光 */
+.dungeon-glow {
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  right: -18px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(8px);
+  opacity: 0.9;
+  transition:
+    transform var(--transition-normal),
+    opacity var(--transition-normal),
+    filter var(--transition-normal);
 }
 
-.dungeon-info {
+/* 巨大 Pokémon 剪影 */
+.dungeon-art-shadow {
+  position: absolute;
+  right: -48px;
+  bottom: -56px;
+  width: 185px;
+  height: 185px;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.19;
+  filter:
+    brightness(0)
+    saturate(100%)
+    drop-shadow(
+      0 0 14px rgba(255, 255, 255, 0.10)
+    );
+  transform:
+    scale(1.18)
+    translate3d(0, 0, 0);
+  transform-origin: center center;
+  transition:
+    transform 0.45s ease,
+    opacity 0.45s ease,
+    filter 0.45s ease;
+}
+
+/* ==========================================================================
+   Pokémon 接地陰影
+   ========================================================================== */
+
+.dungeon-art::before {
+  content: "";
+  position: absolute;
+  width: 82px;
+  height: 20px;
+  right: 8px;
+  bottom: 7px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    radial-gradient(
+      ellipse,
+      rgba(0, 0, 0, 0.58) 0%,
+      rgba(0, 0, 0, 0.34) 38%,
+      rgba(0, 0, 0, 0.08) 68%,
+      transparent 78%
+    );
+  filter: blur(5px);
+  opacity: 0.7;
+  transform: scaleX(1);
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+
+/* Pokémon 周圍立體光 */
+.dungeon-art::after {
+  content: "";
+  position: absolute;
+  width: 105px;
+  height: 105px;
+  right: 2px;
+  bottom: 2px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.035) 35%,
+      transparent 70%
+    );
+  filter: blur(8px);
+  opacity: 0.65;
+}
+
+/* ==========================================================================
+   前景 Pokémon
+   ========================================================================== */
+
+.dungeon-card:not(.event-card) .dungeon-icon {
+  position: absolute;
+  right: 8px;
+  bottom: 3px;
+  width: 82px;
+  height: 82px;
+  object-fit: contain;
+  flex-shrink: 0;
+  z-index: 4;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 7px 7px rgba(0, 0, 0, 0.48))
+    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.65))
+    drop-shadow(0 0 5px rgba(255, 255, 255, 0.08));
+  transform:
+    translate3d(0, 0, 0);
+  transition:
+    transform 0.35s ease,
+    filter 0.35s ease;
+}
+
+/* ==========================================================================
+   普通副本文字
+   ========================================================================== */
+
+.dungeon-card:not(.event-card) .dungeon-info {
+  position: relative;
+  z-index: 5;
+  min-width: 0;
+  max-width: 52%;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  justify-content: center;
+  gap: 5px;
 }
 
-.dungeon-name {
+/* ==========================================================================
+   普通副本名稱
+   ========================================================================== */
+
+.dungeon-card:not(.event-card) .dungeon-name {
+  position: relative;
   font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  font-weight: 750;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.2px;
+  text-shadow:
+    0 2px 7px rgba(0, 0, 0, 0.45);
 }
 
-.dungeon-timer {
-  font-size: 11px;
-  color: #fef08a;
-  font-weight: 500;
+.dungeon-card:not(.event-card) .dungeon-name::after {
+  content: "";
+  display: block;
+  width: 30px;
+  height: 2px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.55;
+  box-shadow:
+    0 0 7px currentColor;
 }
 
-.dungeon-icon {
-  width: 52px;
-  height: 52px;
+.dungeon-card:not(.event-card) {
+  min-height: 108px;
+  padding: 14px;
+}
+
+/* ==========================================================================
+   烈火
+   ========================================================================== */
+
+.dungeon-card.fire {
+  background:
+    radial-gradient(
+      circle at 82% 55%,
+      rgba(251, 146, 60, 0.22) 0%,
+      rgba(239, 68, 68, 0.10) 32%,
+      transparent 68%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(127, 29, 29, 0.95),
+      rgba(69, 10, 10, 0.94)
+    );
+  border-color:
+    rgba(252, 165, 165, 0.45);
+  box-shadow:
+    0 5px 18px rgba(127, 29, 29, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.dungeon-card.fire .dungeon-glow {
+  background:
+    radial-gradient(
+      circle,
+      rgba(251, 146, 60, 0.46) 0%,
+      rgba(239, 68, 68, 0.28) 28%,
+      rgba(220, 38, 38, 0.10) 52%,
+      transparent 75%
+    );
+}
+
+.dungeon-card.fire .dungeon-art-shadow {
+  filter:
+    brightness(0)
+    saturate(100%)
+    drop-shadow(
+      0 0 15px rgba(248, 113, 113, 0.28)
+    )
+    drop-shadow(
+      5px -2px 12px rgba(251, 146, 60, 0.16)
+    );
+}
+
+.dungeon-card.fire .dungeon-name {
+  color: #fff7ed;
+}
+
+.dungeon-card.fire .dungeon-name::after {
+  color: #fb923c;
+}
+
+/* ==========================================================================
+   怒濤
+   ========================================================================== */
+
+.dungeon-card.water {
+  background:
+    radial-gradient(
+      circle at 82% 55%,
+      rgba(96, 165, 250, 0.24) 0%,
+      rgba(37, 99, 235, 0.12) 34%,
+      transparent 68%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(30, 64, 175, 0.90),
+      rgba(12, 35, 75, 0.96)
+    );
+  border-color:
+    rgba(147, 197, 253, 0.45);
+  box-shadow:
+    0 5px 18px rgba(30, 64, 175, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.dungeon-card.water .dungeon-glow {
+  background:
+    radial-gradient(
+      circle,
+      rgba(125, 211, 252, 0.42) 0%,
+      rgba(59, 130, 246, 0.28) 30%,
+      rgba(37, 99, 235, 0.10) 55%,
+      transparent 76%
+    );
+}
+
+.dungeon-card.water .dungeon-art-shadow {
+  filter:
+    brightness(0)
+    saturate(100%)
+    drop-shadow(
+      0 0 15px rgba(96, 165, 250, 0.28)
+    )
+    drop-shadow(
+      5px -2px 12px rgba(125, 211, 252, 0.14)
+    );
+}
+
+.dungeon-card.water .dungeon-name {
+  color: #eff6ff;
+}
+
+.dungeon-card.water .dungeon-name::after {
+  color: #60a5fa;
+}
+
+/* ==========================================================================
+   疾風
+   ========================================================================== */
+
+.dungeon-card.wind {
+  background:
+    radial-gradient(
+      circle at 82% 48%,
+      rgba(250, 204, 21, 0.26) 0%,
+      rgba(202, 138, 4, 0.12) 34%,
+      transparent 68%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(113, 63, 18, 0.90),
+      rgba(55, 45, 10, 0.96)
+    );
+  border-color:
+    rgba(253, 224, 71, 0.45);
+  box-shadow:
+    0 5px 18px rgba(202, 138, 4, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.dungeon-card.wind .dungeon-glow {
+  background:
+    radial-gradient(
+      circle,
+      rgba(254, 240, 138, 0.46) 0%,
+      rgba(250, 204, 21, 0.28) 30%,
+      rgba(202, 138, 4, 0.10) 55%,
+      transparent 76%
+    );
+}
+
+.dungeon-card.wind .dungeon-art-shadow {
+  filter:
+    brightness(0)
+    saturate(100%)
+    drop-shadow(
+      0 0 15px rgba(250, 204, 21, 0.28)
+    )
+    drop-shadow(
+      5px -2px 12px rgba(254, 240, 138, 0.14)
+    );
+}
+
+.dungeon-card.wind .dungeon-name {
+  color: #fefce8;
+}
+
+.dungeon-card.wind .dungeon-name::after {
+  color: #facc15;
+}
+
+/* ==========================================================================
+   大地
+   ========================================================================== */
+
+.dungeon-card.earth {
+  background:
+    radial-gradient(
+      circle at 82% 58%,
+      rgba(74, 222, 128, 0.24) 0%,
+      rgba(22, 163, 74, 0.12) 34%,
+      transparent 68%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(20, 83, 45, 0.92),
+      rgba(9, 45, 28, 0.96)
+    );
+  border-color:
+    rgba(134, 239, 172, 0.45);
+  box-shadow:
+    0 5px 18px rgba(22, 163, 74, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.dungeon-card.earth .dungeon-glow {
+  background:
+    radial-gradient(
+      circle,
+      rgba(134, 239, 172, 0.40) 0%,
+      rgba(74, 222, 128, 0.26) 30%,
+      rgba(22, 163, 74, 0.10) 55%,
+      transparent 76%
+    );
+}
+
+.dungeon-card.earth .dungeon-art-shadow {
+  filter:
+    brightness(0)
+    saturate(100%)
+    drop-shadow(
+      0 0 15px rgba(74, 222, 128, 0.28)
+    )
+    drop-shadow(
+      5px -2px 12px rgba(134, 239, 172, 0.14)
+    );
+}
+
+.dungeon-card.earth .dungeon-name {
+  color: #f0fdf4;
+}
+
+.dungeon-card.earth .dungeon-name::after {
+  color: #4ade80;
+}
+
+/* ==========================================================================
+   普通副本互動效果
+   ========================================================================== */
+
+.dungeon-card:not(.event-card):active .dungeon-art-shadow {
+  transform:
+    scale(1.28)
+    translate3d(-2px, -2px, 0);
+  opacity: 0.24;
+}
+
+.dungeon-card:not(.event-card):active .dungeon-icon {
+  transform:
+    scale(0.94)
+    translate3d(0, 2px, 0);
+  filter:
+    drop-shadow(0 3px 5px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 10px rgba(255, 255, 255, 0.12));
+}
+
+.dungeon-card:not(.event-card):active .dungeon-glow {
+  transform:
+    translateY(-50%)
+    scale(1.12);
+  opacity: 1;
+}
+
+.dungeon-card:not(.event-card):active .dungeon-art::before {
+  transform: scaleX(0.82);
+  opacity: 0.9;
+}
+
+/* ==========================================================================
+   輕微呼吸動畫
+   ========================================================================== */
+
+@keyframes dungeonArtFloat {
+  0%,
+  100% {
+    transform:
+      scale(1.18)
+      translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform:
+      scale(1.21)
+      translate3d(-2px, -2px, 0);
+  }
+}
+
+@keyframes dungeonGlowPulse {
+  0%,
+  100% {
+    opacity: 0.78;
+  }
+
+  50% {
+    opacity: 0.96;
+  }
+}
+
+.dungeon-card:not(:active) .dungeon-art-shadow {
+  animation:
+    dungeonArtFloat 6s ease-in-out infinite;
+}
+
+.dungeon-card:not(:active) .dungeon-glow {
+  animation:
+    dungeonGlowPulse 4.5s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   神獸輪替 Hero
+   ========================================================================== */
+
+.dungeon-card.event-card {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-height: 156px;
+  padding: 20px;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 78% 48%,
+      rgba(216, 180, 254, 0.30) 0%,
+      rgba(168, 85, 247, 0.16) 32%,
+      transparent 70%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(88, 28, 135, 0.72),
+      rgba(49, 20, 75, 0.88)
+    );
+  border-color:
+    rgba(216, 180, 254, 0.55);
+  box-shadow:
+    0 8px 25px rgba(88, 28, 135, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+
+.dungeon-card.event-card .dungeon-glow {
+  width: 230px;
+  height: 230px;
+  right: -12px;
+  background:
+    radial-gradient(
+      circle,
+      rgba(233, 213, 255, 0.40) 0%,
+      rgba(216, 180, 254, 0.28) 22%,
+      rgba(168, 85, 247, 0.18) 45%,
+      rgba(126, 34, 206, 0.06) 64%,
+      transparent 78%
+    );
+  filter: blur(10px);
+}
+
+.dungeon-card.event-card .dungeon-art-shadow {
+  right: -55px;
+  bottom: -70px;
+  width: 230px;
+  height: 230px;
+  opacity: 0.23;
+  filter:
+    brightness(0)
+    saturate(100%)
+    drop-shadow(
+      0 0 22px rgba(216, 180, 254, 0.36)
+    )
+    drop-shadow(
+      6px -3px 18px rgba(233, 213, 255, 0.16)
+    );
+  transform:
+    scale(1.18)
+    translate3d(0, 0, 0);
+}
+
+/* Hero 接地陰影 */
+.dungeon-card.event-card .dungeon-art::before {
+  width: 125px;
+  height: 25px;
+  right: 5px;
+  bottom: 8px;
+  opacity: 0.68;
+  filter: blur(6px);
+}
+
+/* Hero 立體光 */
+.dungeon-card.event-card .dungeon-art::after {
+  width: 170px;
+  height: 170px;
+  right: -5px;
+  bottom: -5px;
+  background:
+    radial-gradient(
+      circle,
+      rgba(233, 213, 255, 0.11) 0%,
+      rgba(216, 180, 254, 0.05) 38%,
+      transparent 72%
+    );
+  filter: blur(10px);
+}
+
+.dungeon-card.event-card .dungeon-icon {
+  position: absolute;
+  right: 0;
+  bottom: -8px;
+  width: 150px;
+  height: 150px;
   object-fit: contain;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
+  z-index: 4;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 9px 10px rgba(0, 0, 0, 0.48))
+    drop-shadow(0 2px 2px rgba(0, 0, 0, 0.60))
+    drop-shadow(0 0 10px rgba(216, 180, 254, 0.20));
+  transition:
+    transform var(--transition-normal),
+    filter var(--transition-normal);
 }
 
-/* 底部選單 */
+/* ==========================================================================
+   Hero 文字
+   ========================================================================== */
+
+.dungeon-card.event-card .dungeon-info {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  max-width: 58%;
+  gap: 8px;
+}
+
+.dungeon-card.event-card .dungeon-name {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  text-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.45),
+    0 0 14px rgba(216, 180, 254, 0.22);
+}
+
+.dungeon-card.event-card .dungeon-timer {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fef08a;
+  line-height: 1.5;
+  text-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.dungeon-card.event-card .dungeon-name::after {
+  content: "";
+  display: block;
+  width: 42px;
+  height: 2px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #d8b4fe;
+  box-shadow:
+    0 0 9px rgba(216, 180, 254, 0.65);
+}
+
+/* ==========================================================================
+   Hero 點擊效果
+   ========================================================================== */
+
+.dungeon-card.event-card:active {
+  transform: scale(0.985);
+}
+
+.dungeon-card.event-card:active .dungeon-icon {
+  transform:
+    scale(0.95)
+    translate3d(0, 2px, 0);
+  filter:
+    drop-shadow(0 5px 8px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 14px rgba(216, 180, 254, 0.30));
+}
+
+.dungeon-card.event-card:active .dungeon-art-shadow {
+  transform:
+    scale(1.25)
+    translate3d(-3px, -2px, 0);
+  opacity: 0.28;
+}
+
+.dungeon-card.event-card:active .dungeon-art::before {
+  transform: scaleX(0.82);
+  opacity: 0.85;
+}
+
+/* ==========================================================================
+   Hero 動畫
+   ========================================================================== */
+
+@keyframes eventArtFloat {
+  0%,
+  100% {
+    transform:
+      scale(1.18)
+      translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform:
+      scale(1.21)
+      translate3d(-3px, -3px, 0);
+  }
+}
+
+.dungeon-card.event-card:not(:active) .dungeon-art-shadow {
+  animation:
+    eventArtFloat 7s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   小螢幕微調
+   ========================================================================== */
+
+@media (max-width: 380px) {
+  .dungeon-card:not(.event-card) {
+    min-height: 104px;
+    padding: 12px;
+  }
+
+  .dungeon-card:not(.event-card) .dungeon-info {
+    max-width: 50%;
+  }
+
+  .dungeon-card:not(.event-card) .dungeon-icon {
+    right: 5px;
+    bottom: 2px;
+    width: 74px;
+    height: 74px;
+  }
+
+  .dungeon-art-shadow {
+    right: -54px;
+    bottom: -58px;
+    width: 170px;
+    height: 170px;
+  }
+
+  .dungeon-glow {
+    width: 165px;
+    height: 165px;
+    right: -28px;
+  }
+
+  .dungeon-art::before {
+    right: 5px;
+    bottom: 6px;
+    width: 72px;
+    height: 18px;
+  }
+
+  .dungeon-card.event-card {
+    min-height: 148px;
+    padding: 17px;
+  }
+
+  .dungeon-card.event-card .dungeon-icon {
+    right: -2px;
+    bottom: -6px;
+    width: 138px;
+    height: 138px;
+  }
+
+  .dungeon-card.event-card .dungeon-art-shadow {
+    right: -62px;
+    bottom: -68px;
+    width: 215px;
+    height: 215px;
+  }
+
+  .dungeon-card.event-card .dungeon-info {
+    max-width: 60%;
+  }
+
+  .dungeon-card.event-card .dungeon-art::before {
+    right: 2px;
+    bottom: 7px;
+    width: 112px;
+  }
+}
+
+/* ==========================================================================
+   減少動態效果
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .dungeon-card:not(.event-card) .dungeon-art-shadow,
+  .dungeon-card:not(.event-card) .dungeon-glow,
+  .dungeon-card.event-card .dungeon-art-shadow {
+    animation: none;
+  }
+
+  .dungeon-card,
+  .dungeon-icon,
+  .dungeon-art-shadow,
+  .dungeon-glow,
+  .dungeon-art::before {
+    transition: none;
+  }
+}
+
+
+/* ==========================================================================
+   底部選單
+   ========================================================================== */
+
 .bottom-menu {
   display: grid;
 
-  /* ★ 三個按鈕左右排列 */
   grid-template-columns: repeat(3, 1fr);
 
-  gap: 12px;
+  gap: 10px;
 
-  /* ★ 三個按鈕一排，所以高度降低 */
-  height: 70px;
+  height: 68px;
 
-  margin-top: 15px;
+  margin-top: 16px;
+
+  flex-shrink: 0;
 }
-
 
 .menu-btn {
   background: rgba(255, 255, 255, 0.05);
+
   border: 1px solid var(--border-color);
+
   border-radius: 14px;
+
   color: var(--text-primary);
 
   font-size: 13px;
@@ -300,14 +1117,173 @@ body {
     background var(--transition-fast),
     transform var(--transition-fast);
 
-  /* 防止文字太長造成按鈕異常 */
   white-space: nowrap;
 }
 
-
 .menu-btn:active {
   background: rgba(255, 255, 255, 0.15);
+
   transform: scale(0.97);
+}
+
+
+/* ==========================================================================
+   手機版
+   ========================================================================== */
+
+@media (max-width: 600px) {
+
+  .home-container {
+    padding: 12px;
+  }
+
+  .dungeon-list {
+    gap: 11px;
+  }
+
+
+  /* -----------------------------------------
+     神獸 Hero
+     ----------------------------------------- */
+
+  .dungeon-card.event-card {
+    min-height: 158px;
+
+    padding: 18px;
+  }
+
+  .dungeon-card.event-card .dungeon-info {
+    max-width: 55%;
+  }
+
+  .dungeon-card.event-card .dungeon-name {
+    font-size: 19px;
+  }
+
+  .dungeon-card.event-card .dungeon-timer {
+    font-size: 11px;
+  }
+
+  .dungeon-card.event-card .dungeon-icon {
+    width: 145px;
+    height: 145px;
+
+    right: -10px;
+    bottom: -12px;
+  }
+
+
+  /* -----------------------------------------
+     四個普通副本
+     ----------------------------------------- */
+
+  .dungeon-card:not(.event-card) {
+    min-height: 104px;
+
+    padding: 12px;
+  }
+
+  .dungeon-card:not(.event-card) .dungeon-name {
+    font-size: 14px;
+  }
+
+  .dungeon-card:not(.event-card) .dungeon-icon {
+    width: 62px;
+    height: 62px;
+  }
+
+
+  /* -----------------------------------------
+     底部選單
+     ----------------------------------------- */
+
+  .bottom-menu {
+    gap: 9px;
+
+    height: 66px;
+
+    margin-top: 14px;
+  }
+
+  .menu-btn {
+    font-size: 12px;
+  }
+}
+
+
+/* ==========================================================================
+   超小螢幕
+   ========================================================================== */
+
+@media (max-width: 380px) {
+
+  .home-container {
+    padding: 10px;
+  }
+
+  .dungeon-list {
+    gap: 9px;
+  }
+
+
+  /* Hero */
+
+  .dungeon-card.event-card {
+    min-height: 146px;
+
+    padding: 16px;
+  }
+
+  .dungeon-card.event-card .dungeon-info {
+    max-width: 56%;
+  }
+
+  .dungeon-card.event-card .dungeon-name {
+    font-size: 17px;
+  }
+
+  .dungeon-card.event-card .dungeon-timer {
+    font-size: 10px;
+  }
+
+  .dungeon-card.event-card .dungeon-icon {
+    width: 128px;
+    height: 128px;
+
+    right: -8px;
+    bottom: -10px;
+  }
+
+
+  /* 普通副本 */
+
+  .dungeon-card:not(.event-card) {
+    min-height: 94px;
+
+    padding: 10px;
+  }
+
+  .dungeon-card:not(.event-card) .dungeon-name {
+    font-size: 13px;
+  }
+
+  .dungeon-card:not(.event-card) .dungeon-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+
+  /* 底部 */
+
+  .bottom-menu {
+    gap: 8px;
+
+    height: 62px;
+  }
+
+  .menu-btn {
+    font-size: 11px;
+  }
 }
 
 /* ==========================================================================
@@ -316,18 +1292,27 @@ body {
 .modal-overlay {
   position: fixed;
   inset: 0;
+
   width: 100vw;
+
   height: 100vh;
   height: 100dvh;
+
   background-color: var(--bg-primary);
+
   z-index: var(--z-modal);
+
   display: flex;
   flex-direction: column;
+
   padding-top: env(safe-area-inset-top, 16px);
   padding-bottom: env(safe-area-inset-bottom, 16px);
+
   opacity: 0;
   pointer-events: none;
+
   transition: opacity var(--transition-normal) ease;
+
   will-change: opacity;
 }
 
@@ -336,66 +1321,527 @@ body {
   pointer-events: auto;
 }
 
+
+/* --------------------------------------------------------------------------
+   Modal 標題列
+   -------------------------------------------------------------------------- */
 .modal-header {
   padding: 16px 20px;
+
   margin-bottom: 8px;
+
   border-bottom: 1px solid var(--border-color);
+
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  flex-shrink: 0;
 }
 
 .modal-title {
   font-size: 18px;
   font-weight: bold;
+
+  line-height: 1.25;
+
+  display: flex;
+  align-items: center;
 }
 
 .back-btn {
   background: #ef4444;
+
   color: white;
+
   border: none;
+
   padding: 6px 14px;
+
   border-radius: var(--radius-sm);
+
   font-size: 13px;
   font-weight: bold;
+
   cursor: pointer;
+
   transition: background var(--transition-fast);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .back-btn:active {
   background: #dc2626;
 }
 
-/* 動態標籤頁 */
+
+/* ==========================================================================
+   動態標籤頁 - 共用基礎
+   ========================================================================== */
 .tab-bar {
   display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  flex-shrink: 0;
+
   background: var(--bg-surface);
+
   border-bottom: 1px solid #334155;
+
   overflow-x: auto;
+  overflow-y: hidden;
+
+  white-space: nowrap;
+
+  /* 上下增加空間，讓標籤不會貼住上下邊界 */
+  padding: 12px 14px 16px;
+
+  scrollbar-width: none;
+
+  -webkit-overflow-scrolling: touch;
+
+  overscroll-behavior-x: contain;
+
+  touch-action: pan-x;
 }
 
+.tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* --------------------------------------------------------------------------
+   共用膠囊標籤
+   -------------------------------------------------------------------------- */
 .tab-btn {
-  flex: 1;
-  padding: 12px 10px;
-  background: none;
-  border: none;
+  flex: 0 0 auto;
+
+  min-width: 58px;
+  height: 36px;
+
+  padding: 0 16px;
+
+  background: rgba(255, 255, 255, 0.045);
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+  border-radius: 18px;
+
   color: var(--text-secondary);
+
   font-size: 13px;
   font-weight: 600;
-  border-bottom: 3px solid transparent;
+
+  /* 關鍵：
+     不使用 line-height 撐高度，
+     改用 flex 讓文字真正垂直置中 */
+  line-height: 1;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+
   cursor: pointer;
+
   white-space: nowrap;
-  transition: color var(--transition-fast), border-color var(--transition-fast);
+
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .tab-btn.active {
-  color: var(--text-highlight);
-  border-bottom-color: var(--text-highlight);
+  color: #fff;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(59, 130, 246, 0.9),
+      rgba(37, 99, 235, 0.9)
+    );
+
+  border-color: rgba(96, 165, 250, 0.85);
+
+  border-bottom-color: rgba(96, 165, 250, 0.85);
+
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.28);
 }
 
-/* 可滑動內容區 */
+.tab-btn:active {
+  transform: scale(0.95);
+}
+
+
+/* ==========================================================================
+   圖鑑標籤 (Pokedex Tabs)
+   ========================================================================== */
+#pokedexTabBar {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  flex-shrink: 0;
+
+  background: var(--bg-surface);
+
+  border-bottom: 1px solid #334155;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  white-space: nowrap;
+
+  /* 比原本多留一些上下空間 */
+  padding: 12px 14px 16px;
+
+  scrollbar-width: none;
+
+  -webkit-overflow-scrolling: touch;
+
+  overscroll-behavior-x: contain;
+
+  touch-action: pan-x;
+}
+
+#pokedexTabBar::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* 圖鑑標籤沿用共用膠囊設計 */
+#pokedexTabBar .tab-btn {
+  flex: 0 0 auto;
+
+  min-width: 58px;
+  height: 36px;
+
+  padding: 0 16px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  line-height: 1;
+}
+
+
+/* 隱藏圖鑑「全部」
+   只隱藏視覺，不刪除 DOM，因此原本 JS 功能仍然存在 */
+#pokedexTabBar .tab-btn:first-child {
+  display: none;
+}
+
+
+/* ==========================================================================
+   編隊 Modal (Team Formation)
+   ========================================================================== */
+.battle-team-content {
+  max-width: 600px;
+
+  width: 90%;
+
+  max-height: 85vh;
+
+  display: flex;
+  flex-direction: column;
+
+  margin: 0 auto;
+
+  overflow: hidden;
+}
+
+
+/* --------------------------------------------------------------------------
+   編隊標題列
+   -------------------------------------------------------------------------- */
+.battle-team-content .modal-header {
+  display: flex;
+
+  justify-content: space-between;
+  align-items: center;
+
+  flex-shrink: 0;
+
+  padding-bottom: 10px;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+  margin-bottom: 12px;
+}
+
+.modal-header-actions {
+  display: flex;
+
+  gap: 8px;
+
+  align-items: center;
+}
+
+
+/* --------------------------------------------------------------------------
+   編隊頂部固定區
+   -------------------------------------------------------------------------- */
+.battle-team-fixed-top {
+  flex-shrink: 0;
+}
+
+.selected-team-container {
+  background: rgba(0, 0, 0, 0.2);
+
+  padding: 10px;
+
+  border-radius: var(--radius-sm);
+
+  margin-bottom: 12px;
+}
+
+.section-subtitle {
+  font-size: 14px;
+
+  color: #ccc;
+
+  margin-bottom: 8px;
+}
+
+.team-slots-wrapper {
+  display: flex;
+
+  gap: 10px;
+
+  justify-content: space-around;
+}
+
+.team-slot {
+  width: 60px;
+  height: 60px;
+
+  border: 2px dashed #666;
+
+  border-radius: var(--radius-sm);
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  position: relative;
+
+  cursor: pointer;
+
+  background: rgba(255, 255, 255, 0.05);
+
+  transition:
+    border-color var(--transition-fast, 0.2s),
+    background var(--transition-fast, 0.2s);
+}
+
+.team-slot.occupied {
+  border: 2px solid #ffd700;
+
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.team-slot .slot-img {
+  width: 40px;
+  height: 40px;
+
+  object-fit: contain;
+}
+
+.team-slot .slot-name {
+  font-size: 10px;
+
+  color: #fff;
+
+  white-space: nowrap;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  max-width: 55px;
+}
+
+.team-slot .slot-placeholder {
+  font-size: 11px;
+
+  color: #888;
+}
+
+.team-slot .remove-btn {
+  position: absolute;
+
+  top: -6px;
+  right: -6px;
+
+  background: #ff4d4d;
+
+  color: white;
+
+  border-radius: 50%;
+
+  width: 16px;
+  height: 16px;
+
+  font-size: 12px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  font-weight: bold;
+}
+
+
+/* ==========================================================================
+   編隊屬性標籤
+   ==========================================================================
+   注意：
+   這裡不再重新定義 .tab-btn 的共用功能，
+   只處理編隊專屬的尺寸、間距與位置。
+   ========================================================================== */
+#battleTeamTabBar {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  white-space: nowrap;
+
+  /*
+   * 上下留白加大：
+   * 讓標籤和上面的隊伍區、下面的寶可夢列表
+   * 都有明確呼吸空間。
+   */
+  padding: 12px 4px 16px;
+
+  margin: 4px 0 14px;
+
+  background: transparent;
+
+  border-bottom: none;
+
+  scrollbar-width: none;
+
+  -webkit-overflow-scrolling: touch;
+
+  overscroll-behavior-x: contain;
+
+  touch-action: pan-x;
+
+  flex-shrink: 0;
+}
+
+#battleTeamTabBar::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* 隱藏「全部」
+   不刪 DOM，不影響原本 JS */
+#battleTeamTabBar .tab-btn:first-child {
+  display: none;
+}
+
+
+/* 編隊專用標籤 */
+#battleTeamTabBar .tab-btn {
+  flex: 0 0 auto;
+
+  min-width: 54px;
+  height: 36px;
+
+  padding: 0 15px;
+
+  box-sizing: border-box;
+
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  border-radius: 18px;
+
+  background: rgba(255, 255, 255, 0.045);
+
+  color: var(--text-secondary);
+
+  font-size: 13px;
+  font-weight: 600;
+
+  /*
+   * 不使用 line-height:36px。
+   * 使用 flex 真正垂直置中，
+   * 避免文字看起來偏下。
+   */
+  line-height: 1;
+
+  text-align: center;
+
+  white-space: nowrap;
+
+  cursor: pointer;
+
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+
+/* 編隊目前選中的屬性 */
+#battleTeamTabBar .tab-btn.active {
+  color: #fff;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(59, 130, 246, 0.85),
+      rgba(37, 99, 235, 0.85)
+    );
+
+  border-color: rgba(96, 165, 250, 0.8);
+
+  border-bottom-color: rgba(96, 165, 250, 0.8);
+
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+
+/* 編隊標籤點擊回饋 */
+#battleTeamTabBar .tab-btn:active {
+  transform: scale(0.95);
+}
+
+
+/* ==========================================================================
+   可滑動內容區 (Modal Content)
+   ========================================================================== */
 .modal-content {
   flex: 1;
+
   min-height: 0;
 
   padding: 16px;
@@ -405,7 +1851,6 @@ body {
 
   -webkit-overflow-scrolling: touch;
 
-  /* ★ 防止滑到頂部後繼續把手勢傳給 WebView */
   overscroll-behavior-y: contain;
 
   touch-action: pan-y;
@@ -414,25 +1859,35 @@ body {
   flex-direction: column;
 }
 
+
 /* ==========================================================================
    6. 寶可夢卡片與稀有度光暈 (Pokemon Cards & Rarity)
    ========================================================================== */
 .pokemon-grid {
   display: grid;
+
   grid-template-columns: repeat(3, 1fr);
+
   gap: 12px;
 }
 
 .pokemon-card {
   background: var(--bg-surface);
+
   border-radius: var(--radius-md);
+
   padding: 12px 8px;
+
   display: flex;
   flex-direction: column;
   align-items: center;
+
   border: 2px solid #334155;
+
   position: relative;
+
   cursor: pointer;
+
   transition: transform var(--transition-fast);
 }
 
@@ -443,69 +1898,130 @@ body {
 .pokemon-img {
   width: 72px;
   height: 72px;
+
   object-fit: contain;
+
   transition: filter var(--transition-normal);
 }
 
 .pokemon-card.locked .pokemon-img {
-  filter: grayscale(100%) brightness(0.25) opacity(0.5);
+  filter:
+    grayscale(100%)
+    brightness(0.25)
+    opacity(0.5);
 }
 
 .pokemon-name {
   font-size: 12px;
+
   margin-top: 6px;
+
   color: #e2e8f0;
+
   text-align: center;
 }
 
 .mega-icon-badge {
   position: absolute;
+
   top: 6px;
   right: 6px;
+
   width: 22px;
   height: 22px;
+
   object-fit: contain;
+
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+
   z-index: 2;
 }
 
+
 /* 稀有度邊框色系 */
-.rarity-white { border-color: var(--rarity-white) !important; box-shadow: 0 0 10px rgba(203, 213, 225, 0.4); }
-.rarity-blue  { border-color: var(--rarity-blue) !important; box-shadow: 0 0 12px rgba(56, 189, 248, 0.6); }
-.rarity-purple{ border-color: var(--rarity-purple) !important; box-shadow: 0 0 12px rgba(192, 132, 252, 0.6); }
-.rarity-gold  { border-color: var(--rarity-gold) !important; box-shadow: 0 0 14px rgba(250, 204, 21, 0.7); }
-.rarity-red   { border-color: var(--rarity-red) !important; box-shadow: 0 0 14px rgba(239, 68, 68, 0.7); }
+.rarity-white {
+  border-color: var(--rarity-white) !important;
+  box-shadow: 0 0 10px rgba(203, 213, 225, 0.4);
+}
+
+.rarity-blue {
+  border-color: var(--rarity-blue) !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+}
+
+.rarity-purple {
+  border-color: var(--rarity-purple) !important;
+  box-shadow: 0 0 12px rgba(192, 132, 252, 0.6);
+}
+
+.rarity-gold {
+  border-color: var(--rarity-gold) !important;
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.7);
+}
+
+.rarity-red {
+  border-color: var(--rarity-red) !important;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.7);
+}
+
 .rarity-rainbow {
-  border-image: linear-gradient(135deg, #f43f5e, #fb923c, #facc15, #4ade80, #38bdf8, #c084fc) 1 !important;
+  border-image:
+    linear-gradient(
+      135deg,
+      #f43f5e,
+      #fb923c,
+      #facc15,
+      #4ade80,
+      #38bdf8,
+      #c084fc
+    ) 1 !important;
+
   box-shadow: 0 0 16px rgba(244, 63, 94, 0.8);
 }
 
-/* 層數選擇清單樣式 */
+
+/* 層數選擇清單 */
 .floor-list {
   display: flex;
+
   flex-direction: column;
+
   gap: 10px;
+
   max-width: 400px;
+
   margin: 0 auto;
+
   width: 100%;
 }
 
 .floor-card {
   display: flex;
+
   align-items: center;
+
   justify-content: space-between;
+
   padding: 14px 18px;
+
   border-radius: var(--radius-md);
+
   background: var(--bg-surface);
+
   border: 1px solid #334155;
+
   cursor: pointer;
+
   transition: background var(--transition-normal);
 }
 
 .floor-card.locked {
   background: #111827;
+
   border-color: #1f2937;
+
   opacity: 0.5;
+
   cursor: not-allowed;
 }
 
@@ -515,11 +2031,13 @@ body {
 
 .floor-info {
   font-size: 16px;
+
   font-weight: 600;
 }
 
 .floor-status {
   font-size: 13px;
+
   color: var(--text-highlight);
 }
 
@@ -527,337 +2045,751 @@ body {
   color: var(--text-muted);
 }
 
+
 /* ==========================================================================
    7. 獨立強化彈窗 (Upgrade Dialog)
    ========================================================================== */
-.upgrade-dialog-overlay {
+#upgradeModal.modal-overlay {
   position: fixed;
+
   inset: 0;
+
   width: 100vw;
+
   height: 100vh;
   height: 100dvh;
+
+  box-sizing: border-box;
+
   background-color: rgba(18, 24, 36, 0.85);
+
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+
   z-index: var(--z-upgrade);
+
   display: flex;
+
+  flex-direction: row;
+
   align-items: center;
   justify-content: center;
+
+  padding:
+    max(10px, env(safe-area-inset-top))
+    max(10px, env(safe-area-inset-right))
+    max(10px, env(safe-area-inset-bottom))
+    max(10px, env(safe-area-inset-left));
+
+  margin: 0;
+
   opacity: 0;
+
   pointer-events: none;
+
   transition: opacity var(--transition-normal) ease;
+
+  overflow: hidden;
 }
 
-.upgrade-dialog-overlay.active {
+#upgradeModal.modal-overlay.active {
   opacity: 1;
+
   pointer-events: auto;
 }
 
-.upgrade-modal-container {
-  background: linear-gradient(145deg, var(--bg-surface), var(--bg-surface-dark));
+#upgradeModal .upgrade-modal-container {
+  position: relative;
+
+  width: min(560px, calc(100vw - 20px));
+
+  max-height: calc(100dvh - 20px);
+
+  margin: 0;
+
+  padding: 0;
+
+  box-sizing: border-box;
+
+  background:
+    linear-gradient(
+      145deg,
+      var(--bg-surface),
+      var(--bg-surface-dark)
+    );
+
   border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+
   border-radius: var(--radius-xl);
-  width: 90%;
-  max-width: 420px;
+
   overflow: hidden;
+
   color: #f8fafc;
-  animation: modalPopUp 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+
+  animation:
+    modalPopUp
+    0.25s
+    cubic-bezier(.175, .885, .32, 1.275)
+    forwards;
+
   will-change: transform, opacity;
 }
 
 @keyframes modalPopUp {
-  0% { transform: scale(0.9); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
-.upgrade-modal-header {
+#upgradeModal .upgrade-modal-header {
   display: flex;
+
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+
+  padding: 14px 16px 14px 20px;
+
+  min-height: 58px;
+
+  box-sizing: border-box;
+
   background: rgba(255, 255, 255, 0.03);
+
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.upgrade-modal-title {
+#upgradeModal .upgrade-modal-title {
   font-size: 16px;
+
   font-weight: 700;
+
   letter-spacing: 0.5px;
+
   color: #f1f5f9;
+
+  white-space: nowrap;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
 }
 
-.upgrade-close-btn {
+#upgradeModal .upgrade-close-btn {
+  flex-shrink: 0;
+
   background: rgba(255, 255, 255, 0.08);
+
   border: none;
+
   color: var(--text-secondary);
-  width: 28px;
-  height: 28px;
+
+  width: 30px;
+  height: 30px;
+
+  margin-left: 10px;
+
   border-radius: 50%;
+
   font-size: 14px;
+
   cursor: pointer;
+
   display: flex;
+
   align-items: center;
   justify-content: center;
+
   transition: all var(--transition-fast);
 }
 
-.upgrade-close-btn:hover {
+#upgradeModal .upgrade-close-btn:hover {
   background: rgba(255, 255, 255, 0.2);
+
   color: var(--text-primary);
 }
 
-.upgrade-modal-body {
+#upgradeModal .upgrade-modal-body {
   padding: 20px;
+
+  box-sizing: border-box;
+
+  max-height: calc(100dvh - 78px);
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  -webkit-overflow-scrolling: touch;
+
+  overscroll-behavior-y: contain;
 }
 
-.upgrade-showcase {
+#upgradeModal .upgrade-modal-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+#upgradeModal .upgrade-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#upgradeModal .upgrade-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+
+  border-radius: 10px;
+}
+
+#upgradeModal .upgrade-showcase {
   display: flex;
+
   flex-direction: column;
+
   align-items: center;
+
   margin-bottom: 20px;
+
   position: relative;
 }
 
-.upgrade-avatar-wrapper {
-  width: 88px;
-  height: 88px;
+#upgradeModal .upgrade-avatar-wrapper {
+  width: 140px;
+  height: 140px;
+
   border-radius: var(--radius-lg);
+
   background: rgba(15, 23, 42, 0.8);
+
   border: 2px solid #3b82f6;
+
   display: flex;
+
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.1);
+
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.35),
+    inset 0 2px 4px rgba(255, 255, 255, 0.1);
+
   position: relative;
+
   overflow: hidden;
 }
 
-.upgrade-avatar-wrapper img {
-  width: 76px;
-  height: 76px;
+#upgradeModal .upgrade-avatar-wrapper img {
+  width: 128px;
+  height: 128px;
+
   object-fit: contain;
 }
 
-.upgrade-badge-star {
+#upgradeModal .upgrade-badge-star {
   margin-top: 8px;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+
+  background:
+    linear-gradient(
+      135deg,
+      #f59e0b,
+      #d97706
+    );
+
   color: #fff;
+
   font-size: 12px;
+
   font-weight: 700;
+
   padding: 2px 10px;
+
   border-radius: 10px;
+
   box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
 }
 
-.upgrade-rows-group {
+#upgradeModal .upgrade-rows-group {
   display: flex;
+
   flex-direction: column;
+
   gap: 10px;
 }
 
-.upgrade-row-card {
+#upgradeModal .upgrade-row-card {
   background: rgba(255, 255, 255, 0.03);
+
   border: 1px solid rgba(255, 255, 255, 0.06);
+
   border-radius: var(--radius-md);
+
   padding: 12px 16px;
+
   display: flex;
+
   align-items: center;
+
   justify-content: space-between;
+
+  gap: 10px;
+
   transition: background var(--transition-fast);
 }
 
-.upgrade-row-card:hover {
+#upgradeModal .upgrade-row-card:hover {
   background: rgba(255, 255, 255, 0.05);
 }
 
-.upgrade-info-side {
+#upgradeModal .upgrade-info-side {
   display: flex;
+
   flex-direction: column;
+
   gap: 3px;
+
+  min-width: 0;
+
+  flex: 1;
 }
 
-.upgrade-label-main {
+#upgradeModal .upgrade-label-main {
   font-size: 14px;
+
   font-weight: 600;
+
   color: #e2e8f0;
 }
 
-.highlight-level {
+#upgradeModal .highlight-level {
   color: var(--text-highlight);
+
   font-weight: 700;
 }
 
-.max-limit {
+#upgradeModal .max-limit {
   font-size: 12px;
+
   color: var(--text-muted);
 }
 
-.upgrade-cost-desc {
+#upgradeModal .upgrade-cost-desc {
   font-size: 11px;
+
   color: var(--text-secondary);
 }
 
-.cost-num {
+#upgradeModal .cost-num {
   color: #fbbf24;
+
   font-weight: 600;
 }
 
-.game-action-btn {
-  padding: 8px 16px;
+#upgradeModal .game-action-btn {
+  flex-shrink: 0;
+
+  padding: 8px 14px;
+
+  min-height: 36px;
+
   border-radius: var(--radius-sm);
+
   font-size: 13px;
+
   font-weight: 600;
+
   cursor: pointer;
+
   border: none;
+
   color: #fff;
-  transition: transform var(--transition-fast), filter var(--transition-fast);
+
+  white-space: nowrap;
+
+  transition:
+    transform var(--transition-fast),
+    filter var(--transition-fast);
+
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
-.game-action-btn:active {
+#upgradeModal .game-action-btn:hover {
+  filter: brightness(1.08);
+}
+
+#upgradeModal .game-action-btn:active {
   transform: scale(0.96);
 }
 
-.btn-exp { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
-.btn-coin { background: linear-gradient(135deg, #10b981, #059669); }
-.btn-star { background: linear-gradient(135deg, #f59e0b, #d97706); }
-.btn-mega { background: linear-gradient(135deg, #a855f7, #7e22ce); }
-
-.game-action-btn:disabled {
-  background: #334155 !important;
-  color: var(--text-muted) !important;
-  box-shadow: none !important;
-  cursor: not-allowed;
-  transform: none;
+#upgradeModal .btn-exp {
+  background:
+    linear-gradient(
+      135deg,
+      #3b82f6,
+      #1d4ed8
+    );
 }
+
+#upgradeModal .btn-coin {
+  background:
+    linear-gradient(
+      135deg,
+      #10b981,
+      #059669
+    );
+}
+
+#upgradeModal .btn-star {
+  background:
+    linear-gradient(
+      135deg,
+      #f59e0b,
+      #d97706
+    );
+}
+
+#upgradeModal .btn-mega {
+  background:
+    linear-gradient(
+      135deg,
+      #a855f7,
+      #7e22ce
+    );
+}
+
+#upgradeModal .btn-shiny {
+  background:
+    linear-gradient(
+      135deg,
+      #06b6d4,
+      #0891b2
+    );
+}
+
+#upgradeModal .btn-shiny-toggle {
+  background:
+    linear-gradient(
+      135deg,
+      #8b5cf6,
+      #6d28d9
+    );
+}
+
+#upgradeModal .game-action-btn:disabled {
+  background: #334155 !important;
+
+  color: var(--text-muted) !important;
+
+  box-shadow: none !important;
+
+  cursor: not-allowed;
+
+  transform: none !important;
+
+  filter: none !important;
+}
+
+#upgradeModal .upgrade-btn-side {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: flex-end;
+
+  gap: 6px;
+
+  flex-shrink: 0;
+}
+
 
 /* ==========================================================================
-   8. 編隊 Modal 樣式 (Team Formation)
+   強化彈窗 - 手機版
    ========================================================================== */
+@media (max-width: 600px) {
 
-/* 1. Modal 主容器：改為 Flex 直向佈局，並限制最大高度 */
-.battle-team-content {
-  max-width: 600px;
-  width: 90%;
-  max-height: 85vh; /* 限制最高佔螢幕 85%，避免太長超出螢幕 */
-  display: flex;
-  flex-direction: column;
-  margin: 0 auto;
-  overflow: hidden; /* 防止外層出現雙滾動條 */
+  /* 通用標籤 */
+  .tab-bar {
+    gap: 9px;
+
+    padding: 11px 12px 15px;
+  }
+
+  .tab-btn {
+    min-width: 54px;
+
+    height: 38px;
+
+    padding: 0 14px;
+
+    border-radius: 19px;
+
+    font-size: 12px;
+
+    line-height: 1;
+  }
+
+
+  /* 圖鑑 */
+  #pokedexTabBar {
+    gap: 9px;
+
+    padding: 11px 12px 15px;
+  }
+
+  #pokedexTabBar .tab-btn {
+    min-width: 54px;
+
+    height: 38px;
+
+    padding: 0 14px;
+
+    border-radius: 19px;
+  }
+
+
+  /* 編隊 */
+  #battleTeamTabBar {
+    gap: 9px;
+
+    padding: 11px 4px 16px;
+
+    margin: 6px 0 14px;
+  }
+
+  #battleTeamTabBar .tab-btn {
+    min-width: 52px;
+
+    height: 38px;
+
+    padding: 0 14px;
+
+    border-radius: 19px;
+
+    font-size: 12px;
+
+    line-height: 1;
+  }
+
+
+  /* 強化彈窗 */
+  #upgradeModal.modal-overlay {
+    padding:
+      max(8px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+  }
+
+  #upgradeModal .upgrade-modal-container {
+    width: calc(100vw - 16px);
+
+    max-height: calc(100dvh - 16px);
+
+    border-radius: var(--radius-lg);
+  }
+
+  #upgradeModal .upgrade-modal-header {
+    min-height: 54px;
+
+    padding: 12px 14px 12px 16px;
+  }
+
+  #upgradeModal .upgrade-modal-body {
+    padding: 16px;
+
+    max-height: calc(100dvh - 70px);
+  }
+
+  #upgradeModal .upgrade-showcase {
+    margin-bottom: 18px;
+  }
+
+  #upgradeModal .upgrade-avatar-wrapper {
+    width: 120px;
+    height: 120px;
+  }
+
+  #upgradeModal .upgrade-avatar-wrapper img {
+    width: 108px;
+    height: 108px;
+  }
+
+  #upgradeModal .upgrade-row-card {
+    padding: 11px 12px;
+
+    gap: 8px;
+  }
+
+  #upgradeModal .upgrade-label-main {
+    font-size: 13px;
+  }
+
+  #upgradeModal .upgrade-cost-desc {
+    font-size: 10px;
+  }
+
+  #upgradeModal .game-action-btn {
+    padding: 7px 10px;
+
+    min-height: 34px;
+
+    font-size: 12px;
+  }
 }
 
-/* 2. 標題列與按鈕區塊 */
-.battle-team-content .modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0; /* 標題不隨內容壓縮 */
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 12px;
+
+/* ==========================================================================
+   超小螢幕
+   ========================================================================== */
+@media (max-width: 380px) {
+
+  .tab-bar {
+    gap: 8px;
+
+    padding-left: 10px;
+    padding-right: 10px;
+
+    padding-bottom: 14px;
+  }
+
+  .tab-btn {
+    min-width: 50px;
+
+    height: 36px;
+
+    padding: 0 12px;
+
+    border-radius: 18px;
+
+    font-size: 11px;
+
+    line-height: 1;
+  }
+
+
+  #pokedexTabBar {
+    gap: 8px;
+
+    padding-left: 10px;
+    padding-right: 10px;
+
+    padding-bottom: 14px;
+  }
+
+  #pokedexTabBar .tab-btn {
+    min-width: 50px;
+
+    height: 36px;
+
+    padding: 0 12px;
+
+    border-radius: 18px;
+  }
+
+
+  #battleTeamTabBar {
+    gap: 8px;
+
+    padding-left: 4px;
+    padding-right: 4px;
+
+    padding-top: 10px;
+    padding-bottom: 14px;
+  }
+
+  #battleTeamTabBar .tab-btn {
+    min-width: 48px;
+
+    height: 36px;
+
+    padding: 0 12px;
+
+    border-radius: 18px;
+
+    font-size: 11px;
+
+    line-height: 1;
+  }
+
+
+  /* 強化彈窗 */
+  #upgradeModal .upgrade-modal-container {
+    width: calc(100vw - 12px);
+
+    max-height: calc(100dvh - 12px);
+  }
+
+  #upgradeModal .upgrade-modal-body {
+    padding: 12px;
+  }
+
+  #upgradeModal .upgrade-showcase {
+    margin-bottom: 14px;
+  }
+
+  #upgradeModal .upgrade-avatar-wrapper {
+    width: 110px;
+    height: 110px;
+  }
+
+  #upgradeModal .upgrade-avatar-wrapper img {
+    width: 98px;
+    height: 98px;
+  }
+
+  #upgradeModal .upgrade-row-card {
+    padding: 10px;
+  }
+
+  #upgradeModal .game-action-btn {
+    padding: 7px 8px;
+
+    font-size: 11px;
+  }
 }
 
-.modal-header-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+
+/* ==========================================================================
+   橫向小螢幕
+   ========================================================================== */
+@media (max-height: 500px) and (orientation: landscape) {
+
+  #upgradeModal .upgrade-modal-container {
+    max-height: calc(100dvh - 12px);
+  }
+
+  #upgradeModal .upgrade-modal-body {
+    max-height: calc(100dvh - 66px);
+
+    padding: 12px 16px;
+  }
+
+  #upgradeModal .upgrade-showcase {
+    margin-bottom: 12px;
+  }
+
+  #upgradeModal .upgrade-avatar-wrapper {
+    width: 80px;
+    height: 80px;
+  }
+
+  #upgradeModal .upgrade-avatar-wrapper img {
+    width: 70px;
+    height: 70px;
+  }
 }
 
-/* 3. 頂部固定區（隊伍 Slots + 屬性標籤） */
-.battle-team-fixed-top {
-  flex-shrink: 0; /* 確保列表滾動時，頂部區塊固定不被壓縮 */
-}
 
-.selected-team-container {
-  background: rgba(0, 0, 0, 0.2);
-  padding: 10px;
-  border-radius: var(--radius-sm);
-  margin-bottom: 12px;
-}
-
-.section-subtitle {
-  font-size: 14px;
-  color: #ccc;
-  margin-bottom: 8px;
-}
-
-.team-slots-wrapper {
-  display: flex;
-  gap: 10px;
-  justify-content: space-around;
-}
-
-.team-slot {
-  width: 60px;
-  height: 60px;
-  border: 2px dashed #666;
-  border-radius: var(--radius-sm);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.05);
-  transition: border-color var(--transition-fast, 0.2s), background var(--transition-fast, 0.2s);
-}
-
-.team-slot.occupied {
-  border: 2px solid #ffd700;
-  background: rgba(255, 215, 0, 0.1);
-}
-
-.team-slot .slot-img {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
-}
-
-.team-slot .slot-name {
-  font-size: 10px;
-  color: #fff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 55px;
-}
-
-.team-slot .slot-placeholder {
-  font-size: 11px;
-  color: #888;
-}
-
-.team-slot .remove-btn {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  background: #ff4d4d;
-  color: white;
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-}
-
-/* 4. 屬性標籤列（水平滾動支援） */
-#battleTeamTabBar {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  white-space: nowrap;
-  padding-bottom: 6px;
-  margin-bottom: 8px;
-  scrollbar-width: thin; /* 讓滾動條細一點 */
-}
-
-/* 5. 下方寶可夢卡片列表獨立滾動區 */
+/* ==========================================================================
+   8. 編隊 Modal - 寶可夢列表
+   ========================================================================== */
 .pokemon-grid-container {
   flex: 1;
+
   min-height: 180px;
 
   overflow-y: auto;
@@ -867,30 +2799,113 @@ body {
 
   -webkit-overflow-scrolling: touch;
 
-  /* ★ */
   overscroll-behavior-y: contain;
+
   touch-action: pan-y;
 }
 
-
 .pokemon-card.selected-in-team {
   opacity: 0.6;
+
   border-color: #ffd700;
+
   position: relative;
 }
 
 .selected-overlay {
   position: absolute;
+
   inset: 0;
+
   background: rgba(0, 0, 0, 0.6);
+
   color: #ffd700;
+
   display: flex;
+
   align-items: center;
   justify-content: center;
+
   font-size: 12px;
+
   font-weight: bold;
+
   border-radius: 6px;
+
   z-index: 2;
+}
+
+/* ==========================================================================
+   編隊 Modal：戰鬥按鈕專用樣式
+   ========================================================================== */
+
+/* 正常可戰鬥狀態 */
+#battleTeamModal #btnStartBattle {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #ffffff;
+  border: 1px solid rgba(96, 165, 250, 0.7);
+  box-shadow:
+    0 4px 12px rgba(37, 99, 235, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  opacity: 1;
+  filter: none;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast),
+    filter var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+/* 滑鼠移入 */
+#battleTeamModal #btnStartBattle:hover {
+  background: linear-gradient(135deg, #60a5fa, #2563eb);
+  border-color: rgba(147, 197, 253, 0.9);
+  box-shadow:
+    0 5px 15px rgba(37, 99, 235, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  filter: brightness(1.05);
+}
+
+/* 點擊回饋 */
+#battleTeamModal #btnStartBattle:active {
+  transform: scale(0.95);
+  filter: brightness(0.95);
+}
+
+/* 沒有選擇寶可夢時 */
+#battleTeamModal #btnStartBattle:disabled {
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.35),
+    rgba(37, 99, 235, 0.35)
+  ) !important;
+
+  color: rgba(255, 255, 255, 0.48) !important;
+
+  border-color: rgba(96, 165, 250, 0.2) !important;
+
+  box-shadow: none !important;
+
+  opacity: 0.65;
+  cursor: not-allowed;
+  filter: none !important;
+  transform: none !important;
+}
+
+/* disabled 狀態禁止 hover 效果 */
+#battleTeamModal #btnStartBattle:disabled:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.35),
+    rgba(37, 99, 235, 0.35)
+  ) !important;
+
+  border-color: rgba(96, 165, 250, 0.2) !important;
+  box-shadow: none !important;
+  filter: none !important;
 }
 
 /* ==========================================================================
@@ -1268,319 +3283,967 @@ body {
 /* ==========================================================================
    12. 抽卡系統與結果 Modal (Gacha System)
    ========================================================================== */
+
+
+/* ==========================================================================
+   抽卡結果區
+   ========================================================================== */
+
 .result-grid {
+  /*
+   * ★ 使用 Flex，不使用 Grid
+   *
+   * 單抽：
+   *        ●
+   *
+   * 十連：
+   *   ●  ●  ●
+   *   ●  ●  ●
+   *   ●  ●  ●
+   *        ●
+   *
+   * 最重要：
+   * justify-content: center
+   * 可以讓單抽真正置中。
+   */
   display: flex;
+
   flex-wrap: wrap;
-  gap: 12px;
+
   justify-content: center;
-  align-items: center;
+  align-content: flex-start;
+  align-items: flex-start;
 
-  max-width: 340px;
-  max-height: 50vh;
+  gap: 12px;
 
-  margin: 12px auto;
+  width: 100%;
+  max-width: 350px;
 
-  overflow-y: auto;
-  overflow-x: hidden;
+  /*
+   * 單抽保留一些空間，
+   * 避免卡片直接貼在 Modal 上方。
+   */
+  min-height: 150px;
 
-  padding: 12px 6px;
+  /*
+   * ★ 不限制高度
+   * ★ 不讓結果區自己產生 scrollbar
+   */
+  max-height: none;
 
-  -webkit-overflow-scrolling: touch;
+  margin: 18px auto 20px;
 
-  /* ★ */
-  overscroll-behavior-y: contain;
-  touch-action: pan-y;
+  padding: 14px 6px 18px;
+
+  /*
+   * ★ 結果區本身不滾動
+   */
+  overflow: visible;
+
+  /*
+   * 防止父層 flex 壓縮
+   */
+  flex-shrink: 0;
+
+  /*
+   * 防止 padding 算錯寬度
+   */
+  box-sizing: border-box;
+
+  /*
+   * 手機觸控正常
+   */
+  touch-action: auto;
 }
 
+
+/* ==========================================================================
+   抽卡結果卡片
+   ========================================================================== */
 
 .gacha-result-card {
-  width: 72px;
-  background: #1c1c28;
+  /*
+   * ★ 固定寬度
+   *
+   * Flex 會自動把：
+   * 單抽 → 放中間
+   * 三張 → 一排
+   * 十張 → 3 + 3 + 3 + 1
+   */
+  width: 86px;
+
+  min-width: 86px;
+  max-width: 86px;
+
+  min-height: 108px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #222230,
+      #181822
+    );
+
   border: 1px solid #444;
+
   border-radius: var(--radius-sm);
-  padding: 6px 4px;
+
+  padding: 8px 5px;
+
   position: relative;
+
   text-align: center;
+
   display: flex;
+
   flex-direction: column;
+
   align-items: center;
-  animation: popIn 0.25s ease-out forwards;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+
+  justify-content: center;
+
+  animation:
+    popIn 0.25s ease-out forwards;
+
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast);
+
   will-change: transform, opacity;
+
+  /*
+   * ★ 不允許 Flex 壓縮卡片
+   */
+  flex: 0 0 86px;
+
+  box-sizing: border-box;
 }
 
+
+/* ==========================================================================
+   結果卡片 Hover
+   ========================================================================== */
+
 .gacha-result-card:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5);
+  transform:
+    translateY(-3px)
+    scale(1.02);
+
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.5);
 }
+
+
+/* ==========================================================================
+   UP 神獸結果
+   ========================================================================== */
 
 .gacha-result-card.is-up {
   border: 1.5px solid #ff007f;
-  box-shadow: 0 0 10px rgba(255, 0, 127, 0.5);
+
+  box-shadow:
+    0 0 10px rgba(255, 0, 127, 0.5);
 }
 
+
+/* ==========================================================================
+   結果寶可夢圖片
+   ========================================================================== */
+
 .res-img {
-  width: 48px;
-  height: 48px;
+  width: 64px;
+  height: 64px;
+
   object-fit: contain;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+
+  filter:
+    drop-shadow(
+      0 2px 5px rgba(0, 0, 0, 0.4)
+    );
+
+  flex-shrink: 0;
 }
+
+
+/* ==========================================================================
+   結果名稱
+   ========================================================================== */
 
 .res-name {
   color: #fff;
-  font-size: 10px;
-  font-weight: 500;
-  margin-top: 4px;
+
+  font-size: 11px;
+
+  font-weight: 600;
+
+  margin-top: 6px;
+
   white-space: nowrap;
+
   overflow: hidden;
+
   text-overflow: ellipsis;
+
   width: 100%;
-  line-height: 1.2;
+
+  line-height: 1.25;
 }
+
+
+/* ==========================================================================
+   結果標籤
+   ========================================================================== */
 
 .res-badge {
   position: absolute;
-  top: -5px;
-  left: -4px;
-  font-size: 8px;
+
+  top: -6px;
+  left: -5px;
+
+  font-size: 9px;
+
   font-weight: bold;
-  padding: 1px 5px;
+
+  padding: 2px 6px;
+
   border-radius: 4px;
+
   color: #fff;
+
   z-index: 2;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.5);
+
   line-height: 1;
 }
 
-.up-badge { background: linear-gradient(135deg, #ff007f, #ff5252); }
-.new-badge { background: linear-gradient(135deg, #00e676, #00b0ff); color: #000; }
+
+/* UP */
+
+.up-badge {
+  background:
+    linear-gradient(
+      135deg,
+      #ff007f,
+      #ff5252
+    );
+}
+
+
+/* NEW */
+
+.new-badge {
+  background:
+    linear-gradient(
+      135deg,
+      #00e676,
+      #00b0ff
+    );
+
+  color: #000;
+}
+
+
+/* ==========================================================================
+   碎片
+   ========================================================================== */
 
 .res-shard-tag {
   color: #ffc107;
-  font-size: 9px;
+
+  font-size: 10px;
+
   font-weight: bold;
-  margin-top: 2px;
+
+  margin-top: 3px;
+
   line-height: 1;
 }
 
+
+/* ==========================================================================
+   抽卡結果動畫
+   ========================================================================== */
+
 @keyframes popIn {
-  0% { opacity: 0; transform: scale(0.6); }
-  80% { transform: scale(1.05); }
-  100% { opacity: 1; transform: scale(1); }
+
+  0% {
+    opacity: 0;
+
+    transform:
+      scale(0.6);
+  }
+
+  80% {
+    transform:
+      scale(1.05);
+  }
+
+  100% {
+    opacity: 1;
+
+    transform:
+      scale(1);
+  }
 }
 
-/* 抽卡 Slider 頁籤與主卡片 */
+
+/* ==========================================================================
+   抽卡 Slider 頁籤
+   ========================================================================== */
+
 .gacha-tabs {
   display: flex;
+
   justify-content: center;
+
   gap: 12px;
+
   margin-top: 16px !important;
+
   margin-bottom: 16px;
+
   padding: 0 16px;
+
+  flex-shrink: 0;
 }
 
-.tab-btn {
+
+/*
+ * 只影響抽卡頁籤
+ * 不影響其他 tab-btn
+ */
+
+.gacha-tabs .tab-btn {
   padding: 8px 18px;
+
   border-radius: 20px;
+
   border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.05);
+
+  background:
+    rgba(255, 255, 255, 0.05);
+
   color: #aaa;
+
   font-size: 14px;
+
   font-weight: bold;
+
   cursor: pointer;
-  transition: all var(--transition-fast) ease;
+
+  transition:
+    all var(--transition-fast) ease;
 }
 
-.tab-btn:hover {
+
+.gacha-tabs .tab-btn:hover {
   color: #fff;
+
   border-color: #666;
 }
 
-.tab-btn.active {
+
+.gacha-tabs .tab-btn.active {
   background: #00d2ff;
+
   color: #121212;
+
   border-color: #00d2ff;
-  box-shadow: 0 0 12px rgba(0, 210, 255, 0.4);
+
+  box-shadow:
+    0 0 12px rgba(0, 210, 255, 0.4);
 }
 
-.tab-btn:active {
-  transform: scale(0.95);
+
+.gacha-tabs .tab-btn:active {
+  transform:
+    scale(0.95);
 }
+
+
+/* ==========================================================================
+   抽卡主卡片
+   ========================================================================== */
 
 .gacha-slider {
   display: flex;
+
   justify-content: center;
+
   align-items: center;
+
   width: 100%;
+
   flex: 1;
+
+  min-height: 0;
+
   padding: 10px 0;
+
+  box-sizing: border-box;
 }
+
 
 .gacha-card {
   width: 100%;
+
   max-width: 340px;
+
   min-height: 420px;
+
   margin: auto;
-  background: rgba(20, 20, 30, 0.95);
+
+  background:
+    rgba(20, 20, 30, 0.95);
+
   border-radius: var(--radius-lg);
+
   padding: 20px 16px;
+
   display: none;
+
   flex-direction: column;
+
   justify-content: space-between;
+
   align-items: center;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.6);
+
   font-size: 12px;
+
+  box-sizing: border-box;
 }
+
 
 .gacha-card.active {
   display: flex;
-  animation: cardFadeIn 0.2s ease-in-out;
+
+  animation:
+    cardFadeIn 0.2s ease-in-out;
 }
+
 
 @keyframes cardFadeIn {
-  from { opacity: 0; transform: scale(0.98); }
-  to { opacity: 1; transform: scale(1); }
+
+  from {
+    opacity: 0;
+
+    transform:
+      scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      scale(1);
+  }
 }
 
-.event-card { border: 1.5px solid #ff007f; }
-.standard-card { border: 1.5px solid #00d2ff; }
+
+.event-card {
+  border:
+    1.5px solid #ff007f;
+}
+
+
+.standard-card {
+  border:
+    1.5px solid #00d2ff;
+}
+
+
+/* ==========================================================================
+   抽卡 Header
+   ========================================================================== */
 
 .gacha-header-row {
   width: 100%;
+
   display: flex;
+
   justify-content: space-between;
+
   align-items: center;
+
   height: 22px;
+
+  flex-shrink: 0;
 }
+
 
 .gacha-badge {
   font-size: 10px;
+
   padding: 3px 8px;
+
   border-radius: 8px;
+
   font-weight: bold;
+
   line-height: 1;
 }
 
-.event-badge { background: #ff007f; color: #fff; }
-.standard-badge { background: #00d2ff; color: #000; }
+
+.event-badge {
+  background: #ff007f;
+
+  color: #fff;
+}
+
+
+.standard-badge {
+  background: #00d2ff;
+
+  color: #000;
+}
+
+
+/* ==========================================================================
+   UP 切換按鈕
+   ========================================================================== */
 
 .switch-up-btn {
   font-size: 10px;
+
   padding: 3px 8px;
+
   background: #2a2a38;
+
   color: #00d2ff;
+
   border: 1px solid #00d2ff;
+
   border-radius: 4px;
+
   cursor: pointer;
-  transition: background var(--transition-fast) ease, transform var(--transition-fast) ease;
+
+  transition:
+    background var(--transition-fast) ease,
+    transform var(--transition-fast) ease;
 }
 
-.switch-up-btn:hover { background: #3b3b4f; }
-.switch-up-btn:active { transform: scale(0.95); }
+
+.switch-up-btn:hover {
+  background: #3b3b4f;
+}
+
+
+.switch-up-btn:active {
+  transform:
+    scale(0.95);
+}
+
+
+/* ==========================================================================
+   抽卡展示區
+   ========================================================================== */
 
 .gacha-display {
   margin: 16px 0;
+
   text-align: center;
+
   display: flex;
+
   flex-direction: column;
+
   align-items: center;
+
   justify-content: center;
+
   width: 100%;
+
   flex: 1;
+
+  min-height: 0;
 }
+
 
 .up-pokemon-img {
   width: 130px;
+
   height: 130px;
+
   object-fit: contain;
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+
+  filter:
+    drop-shadow(
+      0 0 10px rgba(255, 255, 255, 0.3)
+    );
 }
+
 
 .up-info {
   display: flex;
+
   align-items: center;
+
   justify-content: center;
+
   gap: 6px;
+
   margin-top: 6px;
 }
 
+
 .up-tag {
   background: #ffc107;
+
   color: #000;
+
   font-size: 9px;
+
   font-weight: bold;
+
   padding: 2px 4px;
+
   border-radius: 3px;
+
   line-height: 1;
 }
+
 
 .up-name {
   color: #fff;
+
   font-size: 14px;
+
   font-weight: bold;
+
   line-height: 1;
 }
 
+
+/* ==========================================================================
+   抽卡按鈕
+   ========================================================================== */
+
 .gacha-actions {
   display: flex;
+
   gap: 12px;
+
   width: 100%;
+
   margin: 16px 0 12px 0;
+
+  flex-shrink: 0;
 }
+
 
 .draw-btn {
   flex: 1;
+
   display: flex;
+
   align-items: center;
+
   justify-content: center;
+
   gap: 6px;
+
   padding: 10px 0;
+
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  border:
+    1px solid rgba(255, 255, 255, 0.2);
+
   background: #2a2a38;
+
   color: #fff;
+
   font-size: 13px;
+
   font-weight: bold;
+
   cursor: pointer;
+
   white-space: nowrap;
-  transition: transform var(--transition-fast) ease, filter var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+
+  transition:
+    transform var(--transition-fast) ease,
+    filter var(--transition-fast) ease,
+    box-shadow var(--transition-fast) ease;
 }
 
-.draw-btn:hover { filter: brightness(1.15); }
-.draw-btn:active { transform: scale(0.96); }
+
+.draw-btn:hover {
+  filter:
+    brightness(1.15);
+}
+
+
+.draw-btn:active {
+  transform:
+    scale(0.96);
+}
+
 
 .ball-icon {
   width: 18px;
+
   height: 18px;
+
   object-fit: contain;
 }
 
-.event-ten { 
-  background: linear-gradient(180deg, #ff007f, #a00050); 
-  border: none; 
-  box-shadow: 0 2px 8px rgba(255, 0, 127, 0.3);
+
+.event-ten {
+  background:
+    linear-gradient(
+      180deg,
+      #ff007f,
+      #a00050
+    );
+
+  border: none;
+
+  box-shadow:
+    0 2px 8px rgba(255, 0, 127, 0.3);
 }
 
-.standard-ten { 
-  background: linear-gradient(180deg, #00d2ff, #0070a0); 
-  border: none; 
-  color: #fff; 
-  box-shadow: 0 2px 8px rgba(0, 210, 255, 0.3);
+
+.standard-ten {
+  background:
+    linear-gradient(
+      180deg,
+      #00d2ff,
+      #0070a0
+    );
+
+  border: none;
+
+  color: #fff;
+
+  box-shadow:
+    0 2px 8px rgba(0, 210, 255, 0.3);
 }
+
+
+/* ==========================================================================
+   保底資訊
+   ========================================================================== */
 
 .pity-footer {
   width: 100%;
+
   padding-top: 6px;
+
   display: flex;
+
   justify-content: space-between;
+
   align-items: center;
-  border-top: 1px solid var(--border-color);
+
+  border-top:
+    1px solid var(--border-color);
+
   color: #aaa;
+
   font-size: 11px;
+
+  flex-shrink: 0;
 }
+
 
 .pity-footer b {
   color: #ffc107;
+}
+
+
+/* ==========================================================================
+   手機版
+   ========================================================================== */
+
+@media (max-width: 600px) {
+
+  .result-grid {
+    /*
+     * ★ 仍然使用 Flex
+     * 單抽會自動置中
+     */
+    display: flex;
+
+    flex-wrap: wrap;
+
+    justify-content: center;
+
+    align-content: flex-start;
+
+    align-items: flex-start;
+
+    width: 100%;
+
+    max-width: 350px;
+
+    min-height: 150px;
+
+    max-height: none;
+
+    gap: 12px;
+
+    margin: 16px auto 20px;
+
+    padding: 14px 6px 18px;
+
+    overflow: visible;
+  }
+
+
+  .gacha-result-card {
+    /*
+     * 手機卡片大小
+     */
+    width: 82px;
+
+    min-width: 82px;
+
+    max-width: 82px;
+
+    min-height: 104px;
+
+    flex:
+      0 0 82px;
+
+    padding: 8px 5px;
+  }
+
+
+  .res-img {
+    width: 60px;
+
+    height: 60px;
+  }
+
+
+  .res-name {
+    font-size: 11px;
+  }
+
+
+  .res-badge {
+    font-size: 8px;
+
+    padding: 2px 5px;
+  }
+
+
+  .res-shard-tag {
+    font-size: 9px;
+  }
+
+
+  .gacha-card {
+    width: 100%;
+
+    max-width: 340px;
+
+    min-height: 410px;
+
+    padding: 18px 14px;
+  }
+
+
+  .up-pokemon-img {
+    width: 120px;
+
+    height: 120px;
+  }
+}
+
+
+/* ==========================================================================
+   超小螢幕
+   ========================================================================== */
+
+@media (max-width: 380px) {
+
+  .result-grid {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    justify-content: center;
+
+    align-content: flex-start;
+
+    gap: 10px;
+
+    width: 100%;
+
+    max-width: 330px;
+
+    min-height: 140px;
+
+    max-height: none;
+
+    margin: 14px auto 18px;
+
+    padding: 12px 4px 16px;
+
+    overflow: visible;
+  }
+
+
+  .gacha-result-card {
+    width: 76px;
+
+    min-width: 76px;
+
+    max-width: 76px;
+
+    min-height: 98px;
+
+    flex:
+      0 0 76px;
+
+    padding: 7px 4px;
+  }
+
+
+  .res-img {
+    width: 55px;
+
+    height: 55px;
+  }
+
+
+  .res-name {
+    font-size: 10px;
+  }
+
+
+  .res-badge {
+    font-size: 8px;
+
+    padding: 2px 5px;
+  }
+
+
+  .res-shard-tag {
+    font-size: 9px;
+  }
+
+
+  .gacha-card {
+    min-height: 390px;
+
+    padding: 16px 12px;
+  }
+
+
+  .up-pokemon-img {
+    width: 110px;
+
+    height: 110px;
+  }
 }
 
 
@@ -1881,21 +4544,33 @@ body {
       <div class="upgrade-rows-group">
         <!-- 等級強化 -->
         <div class="upgrade-row-card">
-          <div class="upgrade-info-side">
-            <div class="upgrade-label-main">等級提升 <span class="highlight-level">Lv.<span id="upgradeLevel">1</span></span><span class="max-limit">/100</span></div>
-            <div class="upgrade-cost-desc">消耗經驗值: <span id="expCostText" class="cost-num">100</span></div>
-          </div>
-          <button class="game-action-btn btn-exp" id="btnLevelUp" onclick="levelUp()">經驗升級</button>
-        </div>
+  <div class="upgrade-info-side">
+    <div class="upgrade-label-main">
+      等級提升
+      <span class="highlight-level">Lv.<span id="upgradeLevel">1</span></span>
+      <span class="max-limit">/100</span>
+    </div>
+    <div class="upgrade-cost-desc">
+      消耗經驗值: <span id="expCostText" class="cost-num">100</span>
+    </div>
+  </div>
+  <button class="game-action-btn btn-exp" id="btnLevelUp" onclick="levelUp()">經驗升級</button>
+</div>
 
-        <!-- 技能強化 -->
-        <div class="upgrade-row-card">
-          <div class="upgrade-info-side">
-            <div class="upgrade-label-main">技能等級 <span class="highlight-level">Lv.<span id="upgradeSkillLevel">1</span></span><span class="max-limit">/10</span></div>
-            <div class="upgrade-cost-desc">消耗金錢: <span id="coinCostText" class="cost-num">100</span></div>
-          </div>
-          <button class="game-action-btn btn-coin" id="btnSkillUp" onclick="skillUp()">金錢升級</button>
-        </div>
+<!-- 技能強化 -->
+<div class="upgrade-row-card">
+  <div class="upgrade-info-side">
+    <div class="upgrade-label-main">
+      技能等級
+      <span class="highlight-level">Lv.<span id="upgradeSkillLevel">1</span></span>
+      <span class="max-limit">/10</span>
+    </div>
+    <div class="upgrade-cost-desc">
+      消耗金錢: <span id="coinCostText" class="cost-num">10,000</span>
+    </div>
+  </div>
+  <button class="game-action-btn btn-coin" id="btnSkillUp" onclick="skillUp()">金錢升級</button>
+</div>
 
         <!-- 升星突破 -->
         <div class="upgrade-row-card">
@@ -2019,36 +4694,69 @@ body {
 
 
 <div id="settingsModal" class="modal-overlay">
-  <div class="modal-header"><span class="modal-title">設定</span><button class="back-btn" onclick="closeModal('settingsModal')">返回</button></div>
+  <div class="modal-header">
+    <span class="modal-title">設定</span>
+    <button class="back-btn" onclick="closeModal('settingsModal')">返回</button>
+  </div>
+
   <div class="modal-content">
     <p style="color: #666; margin-bottom: 15px;">系統設定與資料管理</p>
+
     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-top: 10px;">
+      
       <div style="font-weight: 600; color: #1e293b; margin-bottom: 12px; font-size: 14px; display: flex; align-items: center; gap: 6px;">
         <span>☁️</span> 雲端與換機備份
       </div>
+
       <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-        <button onclick="exportSaveFile()" style="flex: 1; min-width: 130px; padding: 10px 16px; cursor: pointer; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 500; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s;">
+        
+        <button onclick="exportSaveFile()" 
+          style="flex: 1; min-width: 130px; padding: 10px 16px; cursor: pointer; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 500; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s;">
           📥 下載存檔
         </button>
-        <label style="flex: 1; min-width: 130px; padding: 10px 16px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; text-align: center; box-shadow: 0 2px 4px rgba(37,99,235,0.2); transition: all 0.2s;">
+
+        <label 
+          style="flex: 1; min-width: 130px; padding: 10px 16px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; text-align: center; box-shadow: 0 2px 4px rgba(37,99,235,0.2); transition: all 0.2s;">
           📤 上傳還原
           <input type="file" accept=".json" onchange="importSaveFile(event)" style="display: none;">
         </label>
+
       </div>
+
+      <!-- 返回主遊戲 -->
+      <button onclick="goBackToMain();"
+        style="
+          width: 100%;
+          margin-top: 14px;
+          padding: 12px 16px;
+          border: none;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #64748b, #475569);
+          color: white;
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        ">
+        🏠 返回主遊戲
+      </button>
+
     </div>
   </div>
 </div>
+
 
 <!-- 出戰隊伍選擇 Modal -->
 <div id="battleTeamModal" class="modal-overlay">
   <div class="modal-content battle-team-content">
     <div class="modal-header">
-      <span class="modal-title" id="battleTeamTitle">選擇參戰隊伍</span>
-      <div class="modal-header-actions" style="display: flex; gap: 8px; align-items: center;">
-        <button id="btnStartBattle" class="game-action-btn btn-exp" onclick="startBattle()">戰鬥</button>
-        <button class="back-btn" onclick="closeModal('battleTeamModal')">返回</button>
-      </div>
-    </div>
+  <span class="modal-title" id="battleTeamTitle">選擇參戰隊伍</span>
+
+  <div class="modal-header-actions">
+    <button id="btnStartBattle" class="game-action-btn btn-exp" onclick="startBattle()">戰鬥</button>
+    <button class="back-btn" onclick="closeModal('battleTeamModal')">返回</button>
+  </div>
+</div>
     
     <!-- 頂部固定區：參戰陣容與屬性標籤 -->
     <div class="battle-team-fixed-top">
@@ -2383,6 +5091,27 @@ async function loadGameFromDB() {
   }
 }
 
+
+async function goBackToMain() {
+    try {
+        // 先儲存大亂鬥進度
+        if (typeof saveGameToDB === 'function') {
+            await saveGameToDB();
+            console.log("大亂鬥進度已儲存...");
+        }
+
+        // 儲存完成後再返回主程式
+        window.location.href = "../index.html";
+
+    } catch (error) {
+        console.error("返回主遊戲前儲存失敗：", error);
+
+        // 即使儲存失敗，仍然返回主程式
+        window.location.href = "../index.html";
+    }
+}
+
+
     // 使用 GitHub PokeAPI 官方繪圖 (Official Artwork) 免費大圖素材
     const getImgUrl = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 
@@ -2407,10 +5136,10 @@ const ELEMENT_TAGS = {
 };
 
 const BASE_MATCHUPS = {
-  FIRE:  { EARTH: 0.25, WATER: -0.25 },
-  EARTH: { WATER: 0.25, FIRE: -0.25 },
-  WATER: { WIND: 0.25,  EARTH: -0.25 },
-  WIND:  { FIRE: 0.25,  WATER: -0.25 }
+  FIRE: { WIND:  0.25, WATER: -0.25},
+  WIND: { EARTH:  0.25, FIRE:  -0.25},
+  EARTH: { WATER:  0.25,  WIND:  -0.25},
+  WATER: { FIRE:  0.25,  EARTH: -0.25 }
 };
 
 
@@ -2435,10 +5164,15 @@ const RARITY_MAP = {
 };
 
 const EVENT_LEGEND_IDS = [
-  150, 151, 249, 250, 380, 381, 382, 383, 384, 386,
-  483, 484, 486, 487, 488, 491, 493, 494, 643, 644,
-  646, 716, 717, 718, 720
+  150, 151,
+  249, 250,
+  380, 381, 382, 383, 384, 385, 386,
+  490, 492,
+  483, 484, 486, 487, 488, 491, 493, 494,
+  643, 644, 646, 649,
+  716, 717, 718, 720
 ];
+
 
 // 210 隻寶可夢完整名單
 const POKEMON_DATABASE = [
@@ -2452,6 +5186,10 @@ const POKEMON_DATABASE = [
   { id: 59, name: '風速狗', tag: 'FIRE', family: 58 },
   { id: 77, name: '小火馬', tag: 'FIRE', family: 77 },
   { id: 78, name: '烈焰馬', tag: 'FIRE', family: 77 },
+  { id: 92, name: '鬼斯', tag: 'FIRE', family: 92 },
+  { id: 93, name: '鬼斯通', tag: 'FIRE', family: 92 },
+  { id: 94, name: '耿鬼', tag: 'FIRE', family: 92, canMega: true ,
+  shinyId: 94},
   { id: 126, name: '鴨嘴火獸', tag: 'FIRE', family: 126 },
   { id: 136, name: '火伊布', tag: 'FIRE', family: 133 },
   { id: 146, name: '火焰鳥', tag: 'FIRE', family: 146 },
@@ -2478,11 +5216,15 @@ const POKEMON_DATABASE = [
   { id: 514, name: '爆香猿', tag: 'FIRE', family: 513 },
   { id: 554, name: '火紅不倒翁', tag: 'FIRE', family: 554 },
   { id: 555, name: '達摩狒狒', tag: 'FIRE', family: 554 },
+  { id: 636, name: '燃燒蟲', tag: 'FIRE', family: 636 },
+  { id: 637, name: '火神蛾', tag: 'FIRE', family: 636 },
   { id: 653, name: '火狐狸', tag: 'FIRE', family: 653 },
   { id: 654, name: '長尾火狐', tag: 'FIRE', family: 653 },
   { id: 655, name: '妖火紅狐', tag: 'FIRE', family: 653 },
-  { id: 667, name: '小獅獅', tag: 'FIRE', family: 667 },
-  { id: 668, name: '火炎獅', tag: 'FIRE', family: 667 },
+  { id: 661, name: '小箭雀', tag: 'FIRE', family: 661 },
+  { id: 662, name: '火箭雀', tag: 'FIRE', family: 661 },
+  { id: 663, name: '烈箭鷹', tag: 'FIRE', family: 661 },
+  { id: 721, name: '波爾凱尼恩', tag: 'FIRE', family: 721 },
 
   { id: 1, name: '妙蛙種子', tag: 'EARTH', family: 1 },
   { id: 2, name: '妙蛙草', tag: 'EARTH', family: 1 },
@@ -2498,29 +5240,36 @@ const POKEMON_DATABASE = [
   { id: 208, name: '大鋼蛇', tag: 'EARTH', family: 95, canMega: true },
   { id: 212, name: '巨鉗螳螂', tag: 'EARTH', family: 123, canMega: true },
   { id: 214, name: '赫拉克羅斯', tag: 'EARTH', family: 214, canMega: true },
+  { id: 246, name: '幼基拉斯', tag: 'EARTH', family: 246 },
+  { id: 247, name: '沙基拉斯', tag: 'EARTH', family: 246 },
+  { id: 248, name: '班基拉斯', tag: 'EARTH', family: 246, canMega: true ,
+  shinyId:248},
   { id: 252, name: '木守宮', tag: 'EARTH', family: 252 },
   { id: 253, name: '森林蜥蜴', tag: 'EARTH', family: 252 },
   { id: 254, name: '蜥蜴王', tag: 'EARTH', family: 252, canMega: true },
   { id: 304, name: '可可多拉', tag: 'EARTH', family: 304 },
   { id: 305, name: '可多拉', tag: 'EARTH', family: 304 },
   { id: 306, name: '波士可多拉', tag: 'EARTH', family: 304, canMega: true },
+  { id: 374, name: '鐵啞鈴', tag: 'EARTH', family: 374 },
+  { id: 375, name: '金屬怪', tag: 'EARTH', family: 374 },
+  { id: 376, name: '巨金怪', tag: 'EARTH', family: 374, canMega: true ,
+  shinyId:376},
   { id: 377, name: '雷吉洛克', tag: 'EARTH', family: 377 },
   { id: 379, name: '雷吉斯奇魯', tag: 'EARTH', family: 379 },
   { id: 387, name: '草苗龜', tag: 'EARTH', family: 387 },
   { id: 388, name: '樹林龜', tag: 'EARTH', family: 387 },
   { id: 389, name: '土台龜', tag: 'EARTH', family: 387 },
-  { id: 407, name: '羅絲雷朵', tag: 'EARTH', family: 407 },
-  { id: 443, name: '圓陸鯊', tag: 'EARTH', family: 443 },
-  { id: 444, name: '尖牙陸鯊', tag: 'EARTH', family: 443 },
-  { id: 445, name: '烈咬陸鯊', tag: 'EARTH', family: 443, canMega: true },
+  { id: 407, name: '羅絲雷朵', tag: 'EARTH', family: 407 },  
   { id: 470, name: '葉伊布', tag: 'EARTH', family: 133 },
+  { id: 492, name: '謝米', tag: 'EARTH', family: 492, isEventLegend: true },
   { id: 495, name: '藤藤蛇', tag: 'EARTH', family: 495 },
   { id: 496, name: '青藤蛇', tag: 'EARTH', family: 495 },
   { id: 497, name: '君主蛇', tag: 'EARTH', family: 495 },
   { id: 546, name: '木棉球', tag: 'EARTH', family: 546 },
   { id: 547, name: '風妖精', tag: 'EARTH', family: 546 },
-  { id: 636, name: '燃燒蟲', tag: 'EARTH', family: 636 },
-  { id: 637, name: '火神蛾', tag: 'EARTH', family: 636 },
+  { id: 639, name: '代拉基翁', tag: 'EARTH', family: 639 },
+  { id: 640, name: '畢力吉翁', tag: 'EARTH', family: 640 },
+  { id: 645, name: '土地雲', tag: 'EARTH', family: 645 },
   { id: 650, name: '哈力栗', tag: 'EARTH', family: 650 },
   { id: 651, name: '胖胖哈力', tag: 'EARTH', family: 650 },
   { id: 652, name: '布里卡隆', tag: 'EARTH', family: 650 },
@@ -2553,6 +5302,7 @@ const POKEMON_DATABASE = [
   { id: 260, name: '巨沼怪', tag: 'WATER', family: 258, canMega: true },
   { id: 341, name: '龍蝦小兵', tag: 'WATER', family: 341 },
   { id: 342, name: '鐵螯龍蝦', tag: 'WATER', family: 341 },
+  { id: 350, name: '美納斯', tag: 'WATER', family: 350 },
   { id: 363, name: '海豹球', tag: 'WATER', family: 363 },
   { id: 364, name: '海魔獅', tag: 'WATER', family: 363 },
   { id: 365, name: '帝牙海獅', tag: 'WATER', family: 363 },
@@ -2563,6 +5313,8 @@ const POKEMON_DATABASE = [
   { id: 418, name: '泳圈鼬', tag: 'WATER', family: 418 },
   { id: 419, name: '浮潛鼬', tag: 'WATER', family: 418 },
   { id: 471, name: '冰伊布', tag: 'WATER', family: 133 },
+  { id: 489, name: '霏歐納', tag: 'WATER', family: 489 },
+  { id: 490, name: '瑪納霏', tag: 'WATER', family: 490, isEventLegend: true },
   { id: 501, name: '水水獺', tag: 'WATER', family: 501 },
   { id: 502, name: '雙刃丸', tag: 'WATER', family: 501 },
   { id: 503, name: '大劍鬼', tag: 'WATER', family: 501 },
@@ -2571,7 +5323,10 @@ const POKEMON_DATABASE = [
   { id: 658, name: '甲賀忍蛙', tag: 'WATER', family: 656, canMega: true },
   { id: 692, name: '鐵臂槍蝦', tag: 'WATER', family: 692 },
   { id: 693, name: '鋼炮臂蝦', tag: 'WATER', family: 692 },
-
+  { id: 698, name: '冰雪龍', tag: 'WATER', family: 698 },
+  { id: 699, name: '冰雪巨龍', tag: 'WATER', family: 698 },
+  
+  { id: 15, name: '大針鋒', tag: 'WIND', family: 15, canMega: true },
   { id: 16, name: '波波', tag: 'WIND', family: 16 },
   { id: 17, name: '比比鳥', tag: 'WIND', family: 16 },
   { id: 18, name: '大比鳥', tag: 'WIND', family: 16, canMega: true },
@@ -2584,7 +5339,8 @@ const POKEMON_DATABASE = [
   { id: 68, name: '怪力', tag: 'WIND', family: 66 },
   { id: 133, name: '伊布', tag: 'WIND', family: 133 },
   { id: 135, name: '雷伊布', tag: 'WIND', family: 133 },
-  { id: 143, name: '卡比獸', tag: 'WIND', family: 143 },
+  { id: 142, name: '化石翼龍', tag: 'WIND', family: 142 , canMega: true},
+  { id: 149, name: '快龍', tag: 'WIND', family: 149 },
   { id: 145, name: '閃電鳥', tag: 'WIND', family: 145 },
   { id: 169, name: '叉字蝠', tag: 'WIND', family: 41 },
   { id: 175, name: '波克比', tag: 'WIND', family: 175 },
@@ -2593,6 +5349,7 @@ const POKEMON_DATABASE = [
   { id: 180, name: '茸茸羊', tag: 'WIND', family: 179 },
   { id: 181, name: '電龍', tag: 'WIND', family: 179, canMega: true },
   { id: 243, name: '雷公', tag: 'WIND', family: 243 },
+  { id: 334, name: '七夕青鳥', tag: 'WIND', family: 333, canMega: true },
   { id: 396, name: '姆克兒', tag: 'WIND', family: 396 },
   { id: 397, name: '姆克鳥', tag: 'WIND', family: 396 },
   { id: 398, name: '姆克鷹', tag: 'WIND', family: 396 },
@@ -2600,25 +5357,24 @@ const POKEMON_DATABASE = [
   { id: 404, name: '勒克貓', tag: 'WIND', family: 403 },
   { id: 405, name: '倫琴貓', tag: 'WIND', family: 403 },
   { id: 417, name: '帕奇利茲', tag: 'WIND', family: 417 },
-  { id: 447, name: '利歐路', tag: 'WIND', family: 447 },
-  { id: 448, name: '路卡利歐', tag: 'WIND', family: 447, canMega: true },
   { id: 468, name: '波克基斯', tag: 'WIND', family: 175 },
   { id: 587, name: '電飛鼠', tag: 'WIND', family: 587 },
   { id: 595, name: '電電蟲', tag: 'WIND', family: 595 },
   { id: 596, name: '電蜘蛛', tag: 'WIND', family: 595 },
-  { id: 661, name: '小箭雀', tag: 'WIND', family: 661 },
-  { id: 662, name: '火箭雀', tag: 'WIND', family: 661 },
-  { id: 663, name: '烈箭鷹', tag: 'WIND', family: 661 },
+  { id: 638, name: '勾帕路翁', tag: 'WIND', family: 638 },
+  { id: 647, name: '凱路迪歐', tag: 'WIND', family: 647 },
   { id: 700, name: '仙子伊布', tag: 'WIND', family: 133 },
   { id: 701, name: '摔角鷹人', tag: 'WIND', family: 701 },
   { id: 702, name: '咚咚鼠', tag: 'WIND', family: 702 },
   { id: 714, name: '嗡嗡蝠', tag: 'WIND', family: 714 },
   { id: 715, name: '音波龍', tag: 'WIND', family: 714 },
+  { id: 443, name: '圓陸鯊', tag: 'WIND', family: 443 },
+  { id: 444, name: '尖牙陸鯊', tag: 'WIND', family: 443 },
+  { id: 445, name: '烈咬陸鯊', tag: 'WIND', family: 443, canMega: true },
+  { id: 641, name: '龍捲雲', tag: 'WIND', family: 641 },
+  { id: 642, name: '雷電雲', tag: 'WIND', family: 642 },
 
-  { id: 92, name: '鬼斯', tag: 'WHITE', family: 92 },
-  { id: 93, name: '鬼斯通', tag: 'WHITE', family: 92 },
-  { id: 94, name: '耿鬼', tag: 'WHITE', family: 92, canMega: true ,
-  shinyId: 94},
+  
   { id: 150, name: '超夢', tag: 'WHITE', family: 150, isEventLegend: true, canMega: true ,
   shinyId:150},
   { id: 151, name: '夢幻', tag: 'WHITE', family: 151, isEventLegend: true },
@@ -2636,20 +5392,21 @@ const POKEMON_DATABASE = [
   { id: 371, name: '寶貝龍', tag: 'WHITE', family: 371 },
   { id: 372, name: '甲殼龍', tag: 'WHITE', family: 371 },
   { id: 373, name: '暴飛龍', tag: 'WHITE', family: 371, canMega: true },
-  { id: 374, name: '鐵啞鈴', tag: 'WHITE', family: 374 },
-  { id: 375, name: '金屬怪', tag: 'WHITE', family: 374 },
-  { id: 376, name: '巨金怪', tag: 'WHITE', family: 374, canMega: true ,
-  shinyId:376},
   { id: 380, name: '拉帝亞斯', tag: 'WHITE', family: 380, isEventLegend: true, canMega: true },
   { id: 381, name: '拉帝歐斯', tag: 'WHITE', family: 381, isEventLegend: true, canMega: true },
   { id: 382, name: '蓋歐卡', tag: 'WHITE', family: 382, isEventLegend: true, canMega: true },
   { id: 383, name: '固拉多', tag: 'WHITE', family: 383, isEventLegend: true, canMega: true },
   { id: 384, name: '烈空坐', tag: 'WHITE', family: 384, isEventLegend: true, canMega: true ,
   shinyId:384},
-  { id: 385, name: '基拉祈', tag: 'WHITE', family: 385 },
+  { id: 385, name: '基拉祈', tag: 'WHITE', family: 385, isEventLegend: true },
   { id: 386, name: '代歐奇希斯', tag: 'WHITE', family: 386, isEventLegend: true },
   { id: 442, name: '花岩怪', tag: 'WHITE', family: 442 },
+  { id: 447, name: '利歐路', tag: 'WHITE', family: 447 },
+  { id: 448, name: '路卡利歐', tag: 'WHITE', family: 447, canMega: true },
   { id: 475, name: '艾路雷朵', tag: 'WHITE', family: 280, canMega: true },
+  { id: 480, name: '由克希', tag: 'WHITE', family: 480 },
+  { id: 481, name: '艾姆利多', tag: 'WHITE', family: 481 },
+  { id: 482, name: '亞克諾姆', tag: 'WHITE', family: 482 },
   { id: 483, name: '帝牙盧卡', tag: 'WHITE', family: 483, isEventLegend: true },
   { id: 484, name: '帕路奇亞', tag: 'WHITE', family: 484, isEventLegend: true },
   { id: 485, name: '席多藍恩', tag: 'WHITE', family: 485 },
@@ -2662,11 +5419,14 @@ const POKEMON_DATABASE = [
   { id: 643, name: '萊希拉姆', tag: 'WHITE', family: 643, isEventLegend: true },
   { id: 644, name: '捷克羅姆', tag: 'WHITE', family: 644, isEventLegend: true },
   { id: 646, name: '酋雷姆', tag: 'WHITE', family: 646, isEventLegend: true, canMega: true },
+  { id: 648, name: '美洛耶塔', tag: 'WHITE', family: 648, canMega: true },
+  { id: 649, name: '蓋諾賽克特', tag: 'WHITE', family: 649, isEventLegend: true, shinyId:649},
   { id: 716, name: '哲爾尼亞斯', tag: 'WHITE', family: 716, isEventLegend: true ,
   shinyId:716},
   { id: 717, name: '伊裴爾塔爾', tag: 'WHITE', family: 717, isEventLegend: true ,
   shinyId:717},
   { id: 718, name: '基格爾德', tag: 'WHITE', family: 718, isEventLegend: true, canMega: true },
+  { id: 719, name: '蒂安希', tag: 'WHITE', family: 719, canMega: true },
   { id: 720, name: '胡帕', tag: 'WHITE', family: 720, isEventLegend: true, canMega: true }
 ];
 
@@ -2695,16 +5455,43 @@ const PokemonAPI = {
       { id: 'WHITE', name: '混沌/神聖' }
     ];
 
-    // 25 隻活動神獸清單
+    // 29 隻活動神獸清單
     const EVENT_ROTATION = [
-      { id: 150, name: "超夢" }, { id: 151, name: "夢幻" }, { id: 249, name: "洛奇亞" }, { id: 250, name: "鳳王" },
-      { id: 380, name: "拉帝亞斯" }, { id: 381, name: "拉帝歐斯" }, { id: 382, name: "蓋歐卡" }, { id: 383, name: "固拉多" },
-      { id: 384, name: "烈空坐" }, { id: 386, name: "代歐奇希斯" }, { id: 483, name: "帝牙盧卡" }, { id: 484, name: "帕路奇亞" },
-      { id: 486, name: "雷吉奇卡斯" }, { id: 487, name: "騎拉帝納" }, { id: 488, name: "克雷色莉亞" }, { id: 491, name: "達克萊伊" },
-      { id: 493, name: "阿爾宙斯" }, { id: 494, name: "比克提尼" }, { id: 643, name: "萊希拉姆" }, { id: 644, name: "捷克羅姆" },
-      { id: 646, name: "酋雷姆" }, { id: 716, name: "哲爾尼亞斯" }, { id: 717, name: "伊裴爾塔爾" }, { id: 718, name: "基格爾德" },
-      { id: 720, name: "胡帕" }
-    ];
+  { id: 150, name: "超夢" },
+  { id: 151, name: "夢幻" },
+  { id: 249, name: "洛奇亞" },
+  { id: 250, name: "鳳王" },
+
+  { id: 380, name: "拉帝亞斯" },
+  { id: 381, name: "拉帝歐斯" },
+  { id: 382, name: "蓋歐卡" },
+  { id: 383, name: "固拉多" },
+  { id: 384, name: "烈空坐" },
+  { id: 385, name: "基拉祈" },
+  { id: 386, name: "代歐奇希斯" },
+
+  { id: 483, name: "帝牙盧卡" },
+  { id: 484, name: "帕路奇亞" },
+  { id: 486, name: "雷吉奇卡斯" },
+  { id: 487, name: "騎拉帝納" },
+  { id: 488, name: "克雷色莉亞" },
+  { id: 490, name: "瑪納霏" },
+  { id: 491, name: "達克萊伊" },
+  { id: 492, name: "謝米" },
+  { id: 493, name: "阿爾宙斯" },
+  { id: 494, name: "比克提尼" },
+
+  { id: 643, name: "萊希拉姆" },
+  { id: 644, name: "捷克羅姆" },
+  { id: 646, name: "酋雷姆" },
+  { id: 649, name: "蓋諾賽克特" },
+
+  { id: 716, name: "哲爾尼亞斯" },
+  { id: 717, name: "伊裴爾塔爾" },
+  { id: 718, name: "基格爾德" },
+  { id: 720, name: "胡帕" }
+];
+
     
 
 
@@ -2802,52 +5589,169 @@ function updateUpgradeUI() {
     if (el) el[prop] = value;
   };
 
+  // ==========================================
+  // 基本等級資訊
+  // ==========================================
   setElText("upgradeLevel", selectedPokemon.level);
   setElText("upgradeSkillLevel", selectedPokemon.skillLevel);
   
   const rarityInfo = RARITY_MAP[selectedPokemon.star] || RARITY_MAP[1];
+
   setElText("upgradeStarLevel", `${selectedPokemon.star}星`);
-  setElProp("upgradeAvatarBorder", "className", `upgrade-avatar-wrapper ${rarityInfo.className}`);
-
-  const upgradeImg = document.getElementById("upgradeImg") || document.getElementById("upgradeAvatarImg");
-
-if (upgradeImg && typeof getPokePixelUrl === 'function') {
-  upgradeImg.src = getPokePixelUrl(
-    selectedPokemon.id,
-    selectedPokemon.useShiny
+  setElProp(
+    "upgradeAvatarBorder",
+    "className",
+    `upgrade-avatar-wrapper ${rarityInfo.className}`
   );
-}
 
-  const universalCost = PokemonAPI.getStarCost(selectedPokemon.id, selectedPokemon.star);
-  setElText("universalCostText", selectedPokemon.star >= 6 ? "MAX" : universalCost);
+  // ==========================================
+  // 寶可夢圖片
+  // ==========================================
+  const upgradeImg =
+    document.getElementById("upgradeImg") ||
+    document.getElementById("upgradeAvatarImg");
 
+  if (upgradeImg && typeof getPokePixelUrl === 'function') {
+    upgradeImg.src = getPokePixelUrl(
+      selectedPokemon.id,
+      selectedPokemon.useShiny
+    );
+  }
+
+  // ==========================================
+  // 升星突破：萬用碎片消耗
+  // ==========================================
+  const universalCost = PokemonAPI.getStarCost(
+    selectedPokemon.id,
+    selectedPokemon.star
+  );
+
+  setElText(
+    "universalCostText",
+    selectedPokemon.star >= 6 ? "MAX" : universalCost
+  );
+
+  // ==========================================
+  // 等級提升 / 技能強化
+  // ==========================================
+
+  // 等級提升消耗：
+  // 當前等級 × 100 經驗
+  const levelCost = selectedPokemon.level * 100;
+
+  // 技能提升消耗：
+  // 當前技能等級 × 10000 金幣
+  const skillCost = selectedPokemon.skillLevel * 10000;
+
+  // 卡片上的「消耗經驗值」
+  if (selectedPokemon.level >= 100) {
+    setElText("expCostText", "MAX");
+  } else {
+    setElText(
+      "expCostText",
+      levelCost.toLocaleString()
+    );
+  }
+
+  // 卡片上的「消耗金錢」
+  if (selectedPokemon.skillLevel >= 10) {
+    setElText("coinCostText", "MAX");
+  } else {
+    setElText(
+      "coinCostText",
+      skillCost.toLocaleString()
+    );
+  }
+
+  // ==========================================
+  // 升級按鈕狀態
+  // ==========================================
+  const btnLevelUp = document.getElementById("btnLevelUp");
+  const btnSkillUp = document.getElementById("btnSkillUp");
+
+  // 等級提升按鈕
+  if (btnLevelUp) {
+    const isMax = selectedPokemon.level >= 100;
+
+    setElProp(
+      "btnLevelUp",
+      "disabled",
+      isMax
+    );
+
+    // 按鈕本身只顯示文字，不顯示消耗數字
+    btnLevelUp.innerText = isMax
+      ? "已滿等"
+      : "經驗升級";
+  }
+
+  // 技能強化按鈕
+  if (btnSkillUp) {
+    const isMax = selectedPokemon.skillLevel >= 10;
+
+    setElProp(
+      "btnSkillUp",
+      "disabled",
+      isMax
+    );
+
+    // 按鈕本身只顯示文字，不顯示消耗數字
+    btnSkillUp.innerText = isMax
+      ? "已滿級"
+      : "金錢升級";
+  }
+
+  // ==========================================
   // Mega 列控制
+  // ==========================================
   const megaRow = document.getElementById("megaRow");
   const megaStatusText = document.getElementById("megaStatusText");
   const btnUnlockMega = document.getElementById("btnUnlockMega");
-  
-  setElText("megaCostText", GAME_CONFIG.MEGA_SYSTEM.UNLOCK_KEYSTONE_COST);
+
+  setElText(
+    "megaCostText",
+    GAME_CONFIG.MEGA_SYSTEM.UNLOCK_KEYSTONE_COST
+  );
 
   if (selectedPokemon.canMega) {
-    if (megaRow) megaRow.style.display = "flex";
+
+    if (megaRow) {
+      megaRow.style.display = "flex";
+    }
+
     if (selectedPokemon.isMegaUnlocked) {
-      if (megaStatusText) megaStatusText.innerText = "已解鎖";
+
+      if (megaStatusText) {
+        megaStatusText.innerText = "已解鎖";
+      }
+
       if (btnUnlockMega) {
         btnUnlockMega.innerText = "已解鎖";
         btnUnlockMega.disabled = true;
       }
+
     } else {
-      if (megaStatusText) megaStatusText.innerText = "未解鎖";
+
+      if (megaStatusText) {
+        megaStatusText.innerText = "未解鎖";
+      }
+
       if (btnUnlockMega) {
         btnUnlockMega.innerText = "Mega 解鎖";
         btnUnlockMega.disabled = false;
       }
     }
+
   } else {
-    if (megaRow) megaRow.style.display = "none";
+
+    if (megaRow) {
+      megaRow.style.display = "none";
+    }
   }
 
-  // 💡【新增】異色列 UI 狀態控制
+  // ==========================================
+  // 異色列 UI 狀態控制
+  // ==========================================
   const shinyRow = document.getElementById("shinyRow");
   const shinyStatusText = document.getElementById("shinyStatusText");
   const btnUnlockShiny = document.getElementById("btnUnlockShiny");
@@ -2855,57 +5759,82 @@ if (upgradeImg && typeof getPokePixelUrl === 'function') {
 
   // 若該隻寶可夢有設定異色 ID (shinyId) 才顯示異色列
   if (shinyRow) {
+
     if (selectedPokemon.shinyId) {
+
       shinyRow.style.display = "flex";
+
       const readyToUnlock = isMaxedOut(selectedPokemon);
 
+      // ========================================
+      // 已解鎖異色
+      // ========================================
       if (selectedPokemon.isShinyUnlocked) {
-        // --- 已解鎖狀態 ---
+
         if (shinyStatusText) {
-          shinyStatusText.innerText = selectedPokemon.useShiny ? "✨ 已啟用" : "已解鎖 (原色中)";
+          shinyStatusText.innerText =
+            selectedPokemon.useShiny
+              ? "✨ 已啟用"
+              : "已解鎖 (原色中)";
         }
-        if (btnUnlockShiny) btnUnlockShiny.style.display = "none";
-        
-        if (btnToggleShiny) {
-          btnToggleShiny.style.display = "inline-block";
-          btnToggleShiny.innerText = selectedPokemon.useShiny ? "切換為原色" : "✨ 切換為異色";
-        }
-      } else {
-        // --- 未解鎖狀態 ---
-        if (shinyStatusText) {
-          shinyStatusText.innerText = readyToUnlock ? "可解鎖" : "需滿級/滿技能/6星";
-        }
-        if (btnToggleShiny) btnToggleShiny.style.display = "none";
 
         if (btnUnlockShiny) {
+          btnUnlockShiny.style.display = "none";
+        }
+
+        if (btnToggleShiny) {
+          btnToggleShiny.style.display = "inline-block";
+
+          btnToggleShiny.innerText =
+            selectedPokemon.useShiny
+              ? "切換為原色"
+              : "✨ 切換為異色";
+        }
+
+      // ========================================
+      // 尚未解鎖異色
+      // ========================================
+      } else {
+
+        if (shinyStatusText) {
+          shinyStatusText.innerText =
+            readyToUnlock
+              ? "可解鎖"
+              : "需滿級/滿技能/6星";
+        }
+
+        if (btnToggleShiny) {
+          btnToggleShiny.style.display = "none";
+        }
+
+        if (btnUnlockShiny) {
+
           btnUnlockShiny.style.display = "inline-block";
+
           btnUnlockShiny.disabled = !readyToUnlock;
-          btnUnlockShiny.innerText = readyToUnlock ? "✨ 解鎖異色" : "未達條件";
+
+          btnUnlockShiny.innerText =
+            readyToUnlock
+              ? "✨ 解鎖異色"
+              : "未達條件";
         }
       }
+
     } else {
-      // 若該隻寶可夢沒有異色版本，則隱藏整列
+
+      // 沒有異色版本 → 隱藏整列
       shinyRow.style.display = "none";
     }
   }
 
-  // 按鈕啟用/禁用狀態與動態消耗提示
-  const btnLevelUp = document.getElementById("btnLevelUp");
-  const btnSkillUp = document.getElementById("btnSkillUp");
-
-  if (btnLevelUp) {
-    const isMax = selectedPokemon.level >= 100;
-    setElProp("btnLevelUp", "disabled", isMax);
-    btnLevelUp.innerText = isMax ? "已滿等" : `經驗升級 (${(selectedPokemon.level * 100).toLocaleString()} 經驗)`;
-  }
-
-  if (btnSkillUp) {
-    const isMax = selectedPokemon.skillLevel >= 10;
-    setElProp("btnSkillUp", "disabled", isMax);
-    btnSkillUp.innerText = isMax ? "已滿級" : `金錢升級 (${(selectedPokemon.skillLevel * 100).toLocaleString()} 金幣)`;
-  }
-
-  setElProp("btnStarUp", "disabled", selectedPokemon.star >= 6);
+  // ==========================================
+  // 升星按鈕
+  // ==========================================
+  setElProp(
+    "btnStarUp",
+    "disabled",
+    selectedPokemon.star >= 6
+  );
 }
 
 function filterPokemonGrid(gridId, catId) {
@@ -2954,8 +5883,8 @@ function filterPokemonGrid(gridId, catId) {
 const DUNGEONS = [
   { id: 'fire',  name: '烈火', class: 'fire',  pId: 6, maxUnlockedFloor: 1 },
   { id: 'water', name: '怒濤', class: 'water', pId: 9, maxUnlockedFloor: 1 },
-  { id: 'earth', name: '大地', class: 'earth', pId: 3, maxUnlockedFloor: 1 },
-  { id: 'wind',  name: '疾風', class: 'wind',  pId: 448, maxUnlockedFloor: 1 },
+  { id: 'wind',  name: '疾風', class: 'wind',  pId: 25, maxUnlockedFloor: 1 },
+  { id: 'earth', name: '大地', class: 'earth', pId: 3, maxUnlockedFloor: 1 },  
   { id: 'event', name: '神獸輪替', class: 'event event-card', isEvent: true, maxUnlockedFloor: 1 }
 ];
 
@@ -3023,79 +5952,314 @@ function syncGlobalEventState() {
   lastCycleCount = cycleCount;
 }
 
+
 function renderDungeons() {
   const container = document.getElementById("dungeonContainer");
   if (!container) return;
-  
+
   container.innerHTML = DUNGEONS.map((d, index) => {
+
+    /* =========================================================
+       神獸輪替 Hero
+       ========================================================= */
     if (d.isEvent) {
       const currentEvent = EVENT_ROTATION[currentEventIndex];
+      const eventImgUrl = getImgUrl(currentEvent.id);
 
       return `
-        <div class="dungeon-card ${d.class}" onclick="openFloorModal(${index})">
-          <div class="dungeon-info">
-            <div class="dungeon-name" id="eventDungeonName">${currentEvent.name}</div>
-            <div class="dungeon-timer" id="eventTimer">載入中...</div>
+        <div
+          class="dungeon-card event event-card"
+          onclick="openFloorModal(${index})"
+        >
+
+          <!-- ===================================================
+               Pokémon 三層視覺
+               =================================================== -->
+
+          <div class="dungeon-art">
+
+            <!-- 第二層：神獸能量光 -->
+            <div class="dungeon-glow"></div>
+
+            <!-- 第一層：巨大神獸剪影 -->
+            <img
+              class="dungeon-art-shadow"
+              id="eventDungeonShadow"
+              src="${eventImgUrl}"
+              alt=""
+              aria-hidden="true"
+            >
+
           </div>
-          <img class="dungeon-icon" id="eventDungeonImg" src="${getImgUrl(currentEvent.id)}" alt="${currentEvent.name}">
-        </div>
-      `;
-    } else {
-      return `
-        <div class="dungeon-card ${d.class}" onclick="openFloorModal(${index})">
+
+
+          <!-- ===================================================
+               神獸文字
+               =================================================== -->
+
           <div class="dungeon-info">
-            <div class="dungeon-name">${d.name}</div>
+
+            <div
+              class="dungeon-name"
+              id="eventDungeonName"
+            >
+              ${currentEvent.name}
+            </div>
+
+            <div
+              class="dungeon-timer"
+              id="eventTimer"
+            >
+              載入中...
+            </div>
+
           </div>
-          <img class="dungeon-icon" src="${getImgUrl(d.pId)}" alt="${d.name}">
+
+
+          <!-- ===================================================
+               第三層：正常神獸圖片
+               =================================================== -->
+
+          <img
+            class="dungeon-icon"
+            id="eventDungeonImg"
+            src="${eventImgUrl}"
+            alt="${currentEvent.name}"
+          >
+
         </div>
       `;
     }
+
+
+    /* =========================================================
+       普通四大副本
+       ========================================================= */
+
+    const pokemonImgUrl = getImgUrl(d.pId);
+
+    return `
+      <div
+        class="dungeon-card ${d.class}"
+        onclick="openFloorModal(${index})"
+      >
+
+        <!-- ===================================================
+             Pokémon 三層視覺
+             =================================================== -->
+
+        <div class="dungeon-art">
+
+          <!-- 第二層：屬性能量光 -->
+          <div class="dungeon-glow"></div>
+
+          <!-- 第一層：巨大 Pokémon 剪影 -->
+          <img
+            class="dungeon-art-shadow"
+            src="${pokemonImgUrl}"
+            alt=""
+            aria-hidden="true"
+          >
+
+        </div>
+
+
+        <!-- ===================================================
+             副本文字
+             =================================================== -->
+
+        <div class="dungeon-info">
+
+          <div class="dungeon-name">
+            ${d.name}
+          </div>
+
+        </div>
+
+
+        <!-- ===================================================
+             第三層：正常 Pokémon 圖片
+             =================================================== -->
+
+        <img
+          class="dungeon-icon"
+          src="${pokemonImgUrl}"
+          alt="${d.name}"
+        >
+
+      </div>
+    `;
+
   }).join('');
 }
 
 
+/* ==========================================================================
+   更新神獸輪替 UI
+   ========================================================================== */
 
 function updateEventDungeonUI() {
   const currentEvent = EVENT_ROTATION[currentEventIndex];
-  const nameEl = document.getElementById("eventDungeonName");
+
+  /*
+   * 前景神獸
+   */
   const imgEl = document.getElementById("eventDungeonImg");
 
-  if (nameEl && imgEl) {
-    nameEl.innerText = ` (${currentEvent.name})`;
-    imgEl.src = getImgUrl(currentEvent.id);
+  /*
+   * 背景巨大剪影
+   */
+  const shadowEl = document.getElementById("eventDungeonShadow");
+
+  /*
+   * 神獸名稱
+   */
+  const nameEl = document.getElementById("eventDungeonName");
+
+
+  const imageUrl = getImgUrl(currentEvent.id);
+
+
+  /* =========================================================
+     更新名稱
+     ========================================================= */
+
+  if (nameEl) {
+    nameEl.innerText = currentEvent.name;
+  }
+
+
+  /* =========================================================
+     更新前景神獸圖片
+     ========================================================= */
+
+  if (imgEl) {
+    imgEl.src = imageUrl;
+    imgEl.alt = currentEvent.name;
+  }
+
+
+  /* =========================================================
+     更新背景巨大神獸剪影
+     ========================================================= */
+
+  if (shadowEl) {
+    shadowEl.src = imageUrl;
   }
 }
 
-// 實時更新倒數文字顯示與輪換監控
+
+/* ==========================================================================
+   實時更新倒數文字顯示與輪換監控
+   ========================================================================== */
+
 function updateTimerDisplay() {
+
   const { cycleCount, diff } = getGlobalEventInfo();
 
-  // 若倒數歸零並進入新週期，即時刷新 UI 與狀態
+
+  /* =========================================================
+     若倒數歸零並進入新週期
+     ========================================================= */
+
   if (cycleCount !== lastCycleCount) {
+
     syncGlobalEventState();
+
+    /*
+     * 更新神獸名稱
+     * 更新前景神獸
+     * 更新背景巨大剪影
+     */
     updateEventDungeonUI();
 
-    if (typeof currentDungeon !== 'undefined' && currentDungeon && currentDungeon.isEvent) {
+
+    /*
+     * 如果目前正在查看神獸副本，
+     * 同時刷新樓層列表。
+     */
+    if (
+      typeof currentDungeon !== 'undefined' &&
+      currentDungeon &&
+      currentDungeon.isEvent
+    ) {
       renderFloorList();
     }
   }
 
-  // 計算剩餘 天、時、分、秒
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-  const timerEl = document.getElementById("eventTimer");
+  /* =========================================================
+     計算剩餘時間
+     ========================================================= */
+
+  const days =
+    Math.floor(
+      diff / (1000 * 60 * 60 * 24)
+    );
+
+
+  const hours =
+    Math.floor(
+      (diff % (1000 * 60 * 60 * 24))
+      / (1000 * 60 * 60)
+    );
+
+
+  const minutes =
+    Math.floor(
+      (diff % (1000 * 60 * 60))
+      / (1000 * 60)
+    );
+
+
+  const seconds =
+    Math.floor(
+      (diff % (1000 * 60))
+      / 1000
+    );
+
+
+  /* =========================================================
+     更新倒數文字
+     ========================================================= */
+
+  const timerEl =
+    document.getElementById("eventTimer");
+
+
   if (timerEl) {
-    timerEl.innerText = `輪換倒數: ${days}天 ${hours}小時 ${minutes}分 ${seconds}秒`;
+
+    timerEl.innerText =
+      `輪換倒數: ${days}天 ${hours}小時 ${minutes}分 ${seconds}秒`;
+
   }
 }
 
+
+/* ==========================================================================
+   啟動神獸倒數
+   ========================================================================== */
+
 function startEventTimer() {
-  updateTimerDisplay(); // 載入時立即渲染時間，避免 1 秒空白
-  setInterval(updateTimerDisplay, 1000); // 每秒自動更新
+
+  /*
+   * 載入時立即更新，
+   * 避免第一次等待 1 秒才顯示倒數。
+   */
+  updateTimerDisplay();
+
+
+  /*
+   * 每秒更新一次。
+   */
+  setInterval(
+    updateTimerDisplay,
+    1000
+  );
 }
+
+
+
 
 function openFloorModal(dungeonIndex) {
   currentDungeon = DUNGEONS[dungeonIndex];
@@ -3447,7 +6611,16 @@ function exitBattle() {
 // ==================== 2. 數值與傷害計算 ====================
 
 // 非活動神獸的副神獸 ID
-const SUB_LEGEND_IDS = [144, 145, 146, 243, 244, 245, 251, 377, 378, 379, 385, 485];
+const SUB_LEGEND_IDS = [
+  144, 145, 146,
+  243, 244, 245, 251,
+  377, 378, 379,
+  480, 481, 482, 485,
+  489,
+  638, 639, 640, 641, 642, 647, 648,
+  719, 721
+];
+
 
 // 自動判定寶可夢階級
 function getPokemonStage(p) {
@@ -3678,7 +6851,7 @@ function generateIndividualEnemies(dungeon, floorNum) {
   for (let i = 0; i < 20; i++) addEnemy(1, ids.minion, 'minion', hpMinion, 40);
   for (let i = 0; i < 5; i++)  addEnemy(1, ids.elite,  'elite',  hpElite,  60);
   for (let i = 0; i < 5; i++)  addEnemy(2, ids.elite,  'elite',  hpElite,  60);
-  addEnemy(2, ids.boss, 'boss', hpBoss, 150);
+  addEnemy(2, ids.boss, 'boss', hpBoss, 130);
 
   return waves;
 }
@@ -4314,26 +7487,44 @@ async function applyRewardsToStateAndSave(rewards) {
 }
 
 // 計算副本獎勵
+// 計算副本獎勵
 function applyDungeonRewards(dungeon, floorNum) {
   const exp = 5000 * floorNum;
-  const coin = 1000 * floorNum;
-  
+  const coin = 4500 * floorNum;
+
   let rewards = { exp, coin };
 
   if (dungeon && dungeon.isEvent) {
-    rewards.masterBall = 1;
-    rewards.megaShard = (floorNum >= 6 && floorNum <= 10) ? 1 : 0;
+    // 活動副本
+    rewards.masterBall = (floorNum === 10) ? 3 : 1;
+    rewards.megaShard = (floorNum === 10) ? 3 : ((floorNum >= 6) ? 1 : 0);
   } else {
-    rewards.pokeBall = 5; // 普通副本給 5 個高級球
+    // 普通副本
+    rewards.pokeBall = (floorNum === 10) ? 10 : 5;
   }
 
   if (typeof playerState !== 'undefined') {
     playerState.exp = (playerState.exp || 0) + rewards.exp;
     playerState.coin = (playerState.coin || 0) + rewards.coin;
-    if (rewards.pokeBall) playerState.pokeBall = (playerState.pokeBall || 0) + rewards.pokeBall;
-    if (rewards.masterBall) playerState.masterBall = (playerState.masterBall || 0) + rewards.masterBall;
-    if (rewards.megaShard) playerState.megaShard = (playerState.megaShard || 0) + rewards.megaShard;
-    if (rewards.universalShard) playerState.universalShard = (playerState.universalShard || 0) + rewards.universalShard;
+
+    if (rewards.pokeBall) {
+      playerState.pokeBall = (playerState.pokeBall || 0) + rewards.pokeBall;
+    }
+
+    if (rewards.masterBall) {
+      playerState.masterBall =
+        (playerState.masterBall || 0) + rewards.masterBall;
+    }
+
+    if (rewards.megaShard) {
+      playerState.megaShard =
+        (playerState.megaShard || 0) + rewards.megaShard;
+    }
+
+    if (rewards.universalShard) {
+      playerState.universalShard =
+        (playerState.universalShard || 0) + rewards.universalShard;
+    }
   }
 
   return rewards;
@@ -4409,7 +7600,7 @@ function levelUp() {
   }
 }
 
-// 技能等級提升：消耗金幣 (當前等級 * 100)
+// 技能等級提升：消耗金幣 (當前等級 * 10000)
 function skillUp() {
   if (!selectedPokemon) return;
   if (selectedPokemon.skillLevel >= 10) return;
