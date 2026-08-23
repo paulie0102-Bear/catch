@@ -6537,49 +6537,36 @@ function startBattle() {
   startBattleSystem(currentDungeon, selectedFloorNum, battleTeam);
 }
 
-// 渲染戰場標題與隊伍預覽 (使用 shuffle 圖片)
+// 渲染戰場標題
 function renderBattleScreen() {
-  const dungeonName = currentDungeon.isEvent 
-    ? ` ${EVENT_ROTATION[currentEventIndex].name}` 
+  const dungeonName = currentDungeon.isEvent
+    ? ` ${EVENT_ROTATION[currentEventIndex].name}`
     : currentDungeon.name;
 
   const titleEl = document.getElementById("battleTitle");
+
   if (titleEl) {
-    titleEl.innerText = `${dungeonName} (第 ${selectedFloorNum} 層)`;
+    titleEl.innerText =
+      `${dungeonName} (第 ${selectedFloorNum} 層)`;
   }
 
   const stageEl = document.getElementById("battleStage");
 
-  if (stageEl) {
-    stageEl.innerHTML = battleTeam.map(pId => {
-      const p = POKEMON_DATA.find(item => item.id === pId);
-      if (!p) return '';
+  if (!stageEl) return;
 
-      // ⚔️ 戰場仍然使用 Shuffle
-      // ✨ useShiny 會跟著 POKEMON_DATA 一起傳入
-      const shuffleUrl = getPlayerSpriteUrl({
-        ...p,
-        isMega: false
-      });
+  // 每次重新進入戰場，清除上一場 DOM
+  stageEl.innerHTML = '';
 
-      // 圖片載入失敗時，改用 PokeAPI
-      // 原色 / 異色會依照目前狀態切換
-      const fallbackUrl = getPokePixelUrl(
-        p.id,
-        p.isShinyUnlocked && p.useShiny
-      );
+  // 重置戰場 DOM 快取
+  stageEl._battleDomInitialized = false;
+  stageEl._battleEnemyMap = new Map();
+  stageEl._battlePlayerMap = new Map();
 
-      return `
-        <div class="battle-sprite-wrapper">
-          <img class="battle-sprite-img"
-               src="${shuffleUrl}"
-               alt="${p.name || ''}"
-               onerror="this.onerror=null; this.src='${fallbackUrl}';">
-        </div>
-      `;
-    }).join('');
-  }
+  // 清除上一場目標快取
+  battleState._clusterTick = 0;
+  battleState._clusterTargets = null;
 }
+
 
 // 🎯 主動點擊退出按鈕時，必須清理 Timer 避免背景運行
 function exitBattle() {
@@ -6676,8 +6663,18 @@ let battleState = {
   dungeon: null,
   floorNum: 1,
   timerInterval: null,
-  loopInterval: null
+  loopInterval: null,
+
+  // 戰鬥 AI 暫存
+  _clusterTick: 0,
+  _clusterTargets: null,
+
+  // 戰場 DOM 初始化狀態
+  _stageInitialized: false,
+  _playerDomMap: new Map(),
+  _enemyDomMap: new Map()
 };
+
 
 function startBattleSystem(dungeon, floorNum, teamIds) {
   battleState.dungeon = dungeon;
@@ -7412,196 +7409,94 @@ function toggleShiny() {
 
 
 // ==================== 6. 戰場畫面 DOM 渲染 ====================
-
 function renderDynamicStage() {
   const stageEl = document.getElementById("battleStage");
   if (!stageEl) return;
 
-  // =========================================================
   // 第一次建立 DOM
-  // =========================================================
-
   if (!stageEl._battleDomInitialized) {
     stageEl.innerHTML = '';
-
     stageEl._battleEnemyMap = new Map();
     stageEl._battlePlayerMap = new Map();
-
     stageEl._battleDomInitialized = true;
   }
 
   const enemyMap = stageEl._battleEnemyMap;
   const playerMap = stageEl._battlePlayerMap;
-
-  // =========================================================
-  // 1. 更新 / 建立我方角色
-  // =========================================================
-
   const currentPlayerIds = new Set();
+  const currentEnemyIds = new Set();
 
+  // 1. 我方角色
   battleState.players.forEach((unit, index) => {
-    // 使用穩定 ID，避免每次更新重新建立 DOM
-    const playerId =
+    const playerId = String(
       unit.id ??
       unit.uid ??
       unit.playerId ??
       unit.pokeId ??
-      `player_${index}`;
+      `player_${index}`
+    );
 
-    currentPlayerIds.add(String(playerId));
+    currentPlayerIds.add(playerId);
 
-    let wrapper = playerMap.get(String(playerId));
-
-    // -------------------------------------------------------
-    // 第一次出現：建立 DOM
-    // -------------------------------------------------------
+    let wrapper = playerMap.get(playerId);
 
     if (!wrapper) {
       wrapper = document.createElement('div');
+      wrapper.className = 'player-sprite-wrapper';
 
-      wrapper.className =
-        `player-sprite-wrapper${unit.isMega ? ' mega-active' : ''}`;
+      const attackRangeEl = document.createElement('div');
+      attackRangeEl.className = 'player-attack-range';
 
-      // 攻擊圈
-      const attackRangeEl =
-        document.createElement('div');
-
-      attackRangeEl.className =
-        'player-attack-range';
-
-      // MEGA 標籤
-      const megaTag =
-        document.createElement('div');
-
-      megaTag.className =
-        'mega-tag-aura';
-
+      const megaTag = document.createElement('div');
+      megaTag.className = 'mega-tag-aura';
       megaTag.textContent = 'MEGA';
 
-      // 圖片
-      const img =
-        document.createElement('img');
-
-      img.className =
-        'battle-sprite-img';
-
-      img.alt =
-        unit.name || '';
+      const img = document.createElement('img');
+      img.className = 'battle-sprite-img';
 
       wrapper.appendChild(attackRangeEl);
       wrapper.appendChild(megaTag);
       wrapper.appendChild(img);
-
       stageEl.appendChild(wrapper);
 
-      playerMap.set(
-        String(playerId),
-        wrapper
-      );
+      playerMap.set(playerId, wrapper);
     }
 
-    // -------------------------------------------------------
-    // 更新座標
-    // -------------------------------------------------------
+    wrapper.style.left = `${unit.x}%`;
+    wrapper.style.top = `${unit.y}%`;
+    wrapper.style.zIndex = Math.floor(unit.y * 10);
+    wrapper.classList.toggle('mega-active', !!unit.isMega);
 
-    const zIndex =
-      Math.floor(unit.y * 10);
-
-    wrapper.style.left =
-      `${unit.x}%`;
-
-    wrapper.style.top =
-      `${unit.y}%`;
-
-    wrapper.style.zIndex =
-      zIndex;
-
-    // -------------------------------------------------------
-    // 更新 Mega 狀態
-    // -------------------------------------------------------
-
-    wrapper.classList.toggle(
-      'mega-active',
-      !!unit.isMega
-    );
-
-    const megaTag =
-      wrapper.querySelector('.mega-tag-aura');
-
-    if (megaTag) {
-      megaTag.style.display =
-        unit.isMega ? 'block' : 'none';
-    }
-
-    // -------------------------------------------------------
-    // 更新攻擊圈
-    // -------------------------------------------------------
+    const megaTag = wrapper.querySelector('.mega-tag-aura');
+    if (megaTag) megaTag.style.display = unit.isMega ? 'block' : 'none';
 
     const color =
-      (
-        typeof TAG_COLORS !== 'undefined' &&
-        TAG_COLORS[unit.tag]
-      )
+      typeof TAG_COLORS !== 'undefined' && TAG_COLORS[unit.tag]
         ? TAG_COLORS[unit.tag]
         : '#ffcb05';
 
-    const attackRange = 110;
-
-    const attackRangeEl =
-      wrapper.querySelector(
-        '.player-attack-range'
-      );
-
+    const attackRangeEl = wrapper.querySelector('.player-attack-range');
     if (attackRangeEl) {
-      attackRangeEl.style.width =
-        `${attackRange}px`;
-
-      attackRangeEl.style.height =
-        `${attackRange}px`;
-
-      attackRangeEl.style.left =
-        '50%';
-
-      attackRangeEl.style.top =
-        '50%';
-
-      attackRangeEl.style.borderColor =
-        color;
-
-      attackRangeEl.style.color =
-        color;
+      attackRangeEl.style.width = '110px';
+      attackRangeEl.style.height = '110px';
+      attackRangeEl.style.left = '50%';
+      attackRangeEl.style.top = '50%';
+      attackRangeEl.style.borderColor = color;
+      attackRangeEl.style.color = color;
     }
 
-    // -------------------------------------------------------
-    // 更新圖片
-    // -------------------------------------------------------
+    const img = wrapper.querySelector('.battle-sprite-img');
+    const spriteUrl = getPlayerSpriteUrl(unit);
 
-    const img =
-      wrapper.querySelector(
-        '.battle-sprite-img'
-      );
-
-    const spriteUrl =
-      getPlayerSpriteUrl(unit);
-
-    if (
-      img &&
-      img.dataset.src !== spriteUrl
-    ) {
+    if (img && img.dataset.src !== spriteUrl) {
       img.src = spriteUrl;
       img.dataset.src = spriteUrl;
     }
 
-    if (img) {
-      img.alt =
-        unit.name || '';
-    }
+    if (img) img.alt = unit.name || '';
   });
 
-  // =========================================================
-  // 2. 移除已不存在的我方角色
-  // =========================================================
-
+  // 移除不存在的我方角色
   for (const [id, wrapper] of playerMap) {
     if (!currentPlayerIds.has(id)) {
       wrapper.remove();
@@ -7609,173 +7504,75 @@ function renderDynamicStage() {
     }
   }
 
-  // =========================================================
-  // 3. 更新 / 建立敵人
-  // =========================================================
-
-  const currentEnemyIds = new Set();
-
+  // 2. 敵人
   battleState.enemies.forEach((unit, index) => {
-    /*
-     * 優先使用原本資料中的 id。
-     * 如果沒有 id，第一次建立時給予穩定 DOM ID。
-     */
     if (unit._battleDomId == null) {
       unit._battleDomId =
-        `enemy_${Date.now()}_${index}_${Math.random()
-          .toString(36)
-          .slice(2, 7)}`;
+        `enemy_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`;
     }
 
-    const enemyId =
-      String(unit._battleDomId);
-
+    const enemyId = String(unit._battleDomId);
     currentEnemyIds.add(enemyId);
 
-    let wrapper =
-      enemyMap.get(enemyId);
-
-    // -------------------------------------------------------
-    // 第一次出現：建立 DOM
-    // -------------------------------------------------------
+    let wrapper = enemyMap.get(enemyId);
 
     if (!wrapper) {
-      wrapper =
-        document.createElement('div');
+      wrapper = document.createElement('div');
+      wrapper.className = `enemy-single-wrapper ${unit.type || ''}`;
 
-      wrapper.className =
-        `enemy-single-wrapper ${unit.type || ''}`;
+      const hpBar = document.createElement('div');
+      hpBar.className = 'hp-bar-mini';
 
-      // HP
-      const hpBar =
-        document.createElement('div');
-
-      hpBar.className =
-        'hp-bar-mini';
-
-      const hpFill =
-        document.createElement('div');
-
-      hpFill.className =
-        'hp-bar-fill';
+      const hpFill = document.createElement('div');
+      hpFill.className = 'hp-bar-fill';
 
       hpBar.appendChild(hpFill);
 
-      // 圖片
-      const img =
-        document.createElement('img');
-
-      img.className =
-        'battle-sprite-img';
+      const img = document.createElement('img');
+      img.className = 'battle-sprite-img';
 
       wrapper.appendChild(hpBar);
       wrapper.appendChild(img);
-
       stageEl.appendChild(wrapper);
 
-      enemyMap.set(
-        enemyId,
-        wrapper
-      );
+      enemyMap.set(enemyId, wrapper);
     }
 
-    // -------------------------------------------------------
-    // 更新座標
-    // -------------------------------------------------------
+    wrapper.style.left = `${unit.x}%`;
+    wrapper.style.top = `${unit.y}%`;
+    wrapper.style.width = `${unit.size}px`;
+    wrapper.style.height = `${unit.size}px`;
+    wrapper.style.zIndex = Math.floor(unit.y * 10);
 
-    const zIndex =
-      Math.floor(unit.y * 10);
-
-    wrapper.style.left =
-      `${unit.x}%`;
-
-    wrapper.style.top =
-      `${unit.y}%`;
-
-    wrapper.style.width =
-      `${unit.size}px`;
-
-    wrapper.style.height =
-      `${unit.size}px`;
-
-    wrapper.style.zIndex =
-      zIndex;
-
-    // -------------------------------------------------------
-    // 更新敵人類型
-    // -------------------------------------------------------
-
-    const expectedClass =
-      `enemy-single-wrapper ${unit.type || ''}`;
-
-    if (
-      wrapper.className !==
-      expectedClass
-    ) {
-      wrapper.className =
-        expectedClass;
+    const expectedClass = `enemy-single-wrapper ${unit.type || ''}`;
+    if (wrapper.className !== expectedClass) {
+      wrapper.className = expectedClass;
     }
 
-    // -------------------------------------------------------
-    // 更新 HP
-    // -------------------------------------------------------
-
-    const hpFill =
-      wrapper.querySelector(
-        '.hp-bar-fill'
-      );
-
+    const hpFill = wrapper.querySelector('.hp-bar-fill');
     const hpPercent =
       unit.maxHp > 0
-        ? Math.max(
-            0,
-            Math.min(
-              100,
-              (unit.hp / unit.maxHp) * 100
-            )
-          )
+        ? Math.max(0, Math.min(100, (unit.hp / unit.maxHp) * 100))
         : 0;
 
-    if (hpFill) {
-      hpFill.style.width =
-        `${hpPercent}%`;
-    }
+    if (hpFill) hpFill.style.width = `${hpPercent}%`;
 
-    // -------------------------------------------------------
-    // 更新圖片
-    // -------------------------------------------------------
+    const img = wrapper.querySelector('.battle-sprite-img');
+    const pokeId = String(unit.pokeId);
+    const gifUrl = getPokeGifUrl(unit.pokeId);
+    const fallbackUrl = getImgUrl(unit.pokeId);
 
-    const img =
-      wrapper.querySelector(
-        '.battle-sprite-img'
-      );
-
-    const gifUrl =
-      getPokeGifUrl(unit.pokeId);
-
-    const fallbackUrl =
-      getImgUrl(unit.pokeId);
-
-    if (
-      img &&
-      img.dataset.pokeId !== String(unit.pokeId)
-    ) {
-      img.dataset.pokeId =
-        String(unit.pokeId);
-
+    if (img && img.dataset.pokeId !== pokeId) {
+      img.dataset.pokeId = pokeId;
       img.onerror = function () {
         this.onerror = null;
         this.src = fallbackUrl;
       };
-
       img.src = gifUrl;
     }
   });
 
-  // =========================================================
-  // 4. 移除已死亡 / 不存在的敵人 DOM
-  // =========================================================
-
+  // 移除死亡 / 不存在的敵人
   for (const [id, wrapper] of enemyMap) {
     if (!currentEnemyIds.has(id)) {
       wrapper.remove();
@@ -7783,41 +7580,26 @@ function renderDynamicStage() {
     }
   }
 
-  // =========================================================
-  // 5. Y 軸深度排序
-  //
-  // 不重新建立 DOM，只調整 z-index
-  // =========================================================
-
+  // 3. Y 軸深度排序
   battleState.players.forEach((unit, index) => {
-    const playerId =
+    const playerId = String(
       unit.id ??
       unit.uid ??
       unit.playerId ??
       unit.pokeId ??
-      `player_${index}`;
+      `player_${index}`
+    );
 
-    const wrapper =
-      playerMap.get(String(playerId));
-
-    if (wrapper) {
-      wrapper.style.zIndex =
-        Math.floor(unit.y * 10);
-    }
+    const wrapper = playerMap.get(playerId);
+    if (wrapper) wrapper.style.zIndex = Math.floor(unit.y * 10);
   });
 
   battleState.enemies.forEach(unit => {
-    const wrapper =
-      enemyMap.get(
-        String(unit._battleDomId)
-      );
-
-    if (wrapper) {
-      wrapper.style.zIndex =
-        Math.floor(unit.y * 10);
-    }
+    const wrapper = enemyMap.get(String(unit._battleDomId));
+    if (wrapper) wrapper.style.zIndex = Math.floor(unit.y * 10);
   });
 }
+
 
 
 
