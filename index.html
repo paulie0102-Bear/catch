@@ -3013,10 +3013,11 @@ body {
   width: 60px;
   height: 60px;
   transform: translate(-50%, -50%) translateZ(0);
-  transition: left 0.1s linear, top 0.1s linear, width 0.3s ease, height 0.3s ease;
   z-index: 8;
   will-change: left, top;
+  overflow: visible;
 }
+
 
 .player-sprite-wrapper.mega-active {
   width: 80px;
@@ -3108,60 +3109,7 @@ body {
   height: 100%;
 }
 
-/* ==========================================================================
-   10. 技能與特效 (Skill & Hit Effects)
-   ========================================================================== */
-.skill-aoe-wave {
-  position: absolute;
-  width: 120px;
-  height: 120px;
-  border: 2px solid;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0.75;
-  box-shadow: 0 0 6px currentColor;
-  animation: waveExpand 0.3s cubic-bezier(0.15, 0.85, 0.35, 1) forwards;
-  pointer-events: none;
-  z-index: 9;
-}
 
-@keyframes waveExpand {
-  0% {
-    transform: translate(-50%, -50%) scale(0.2);
-    opacity: 0.9;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1.3);
-    opacity: 0;
-  }
-}
-
-.hit-spark {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 6px currentColor;
-  animation: sparkFade 0.2s ease-out forwards;
-  pointer-events: none;
-  z-index: 10;
-}
-
-@keyframes sparkFade {
-  0% {
-    opacity: 0.9;
-    transform: translate(-50%, -50%) scale(0.5);
-  }
-  50% {
-    opacity: 0.8;
-    transform: translate(-50%, -50%) scale(1.2);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(1.5);
-  }
-}
 
 /* ==========================================================================
    11. Mega 進化與結算彈窗 (Evo Modal & Settlement)
@@ -4430,6 +4378,43 @@ body {
 
   box-shadow: 0 4px 10px rgba(168, 85, 247, 0.3);
 }
+
+/* =========================================================
+   低耗電攻擊範圍圈
+   ========================================================= */
+
+.player-attack-range {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 110px;
+  height: 110px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  box-sizing: border-box;
+  pointer-events: none;
+  opacity: 0.65;
+  background: color-mix(
+    in srgb,
+    currentColor 5%,
+    transparent
+  );
+  box-shadow:
+    0 0 4px currentColor,
+    0 0 8px currentColor,
+    inset 0 0 4px currentColor;
+
+  z-index: 1;
+}
+
+.player-sprite-wrapper .battle-sprite-img {
+  position: relative;
+  z-index: 2;
+}
+
+
+
 
 
 </style>
@@ -6857,178 +6842,405 @@ function generateIndividualEnemies(dungeon, floorNum) {
 }
 
 // ==================== 4. 戰鬥邏輯主迴圈 ====================
-
 function updateBattleLoop() {
   const enemies = battleState.enemies;
+  const players = battleState.players;
 
-  // 💡 設定戰場邊界限制（防止超出 UI 欄與容器）
-  const MIN_X = 5;   // 左邊界 5%
-  const MAX_X = 90;  // 右邊界 90%
-  const MIN_Y = 12;  // 頂部邊界 12% (避開 60px 頂部欄)
-  const MAX_Y = 88;  // 底部邊界 88%
+  const MIN_X = 5;
+  const MAX_X = 90;
+  const MIN_Y = 12;
+  const MAX_Y = 88;
 
-  // 1. 敵人移動與加速 logic
-  enemies.forEach(e => {
-    // 💡 加上 speed 速度倍率加速，沒有預設值就用 1.3 倍速
+  const getAttackRange = (p) =>
+    Math.min(18, Math.max(8, 8 + Math.sqrt(Math.max(0, p.dps || 0)) * 0.8));
+
+  const distSq = (x1, y1, x2, y2) => {
+    const dx = x1 - x2;
+    const dy = y1 - y2;
+    return dx * dx + dy * dy;
+  };
+
+  const CLUSTER_UPDATE_TICKS = 15;
+  const MIN_CLUSTER_DISTANCE = 12;
+  const MIN_CLUSTER_DISTANCE_SQ = MIN_CLUSTER_DISTANCE * MIN_CLUSTER_DISTANCE;
+
+  if (battleState._clusterTick === undefined) {
+    battleState._clusterTick = 0;
+  }
+
+  battleState._clusterTick++;
+
+  // 1. 敵人移動
+  for (let i = 0; i < enemies.length; i++) {
+    const e = enemies[i];
     const currentSpeed = e.speed || 1.3;
+
     e.x += e.vx * currentSpeed;
     e.y += e.vy * currentSpeed;
 
-    // 💡 擴大移動範圍至全戰場 (MIN_X~MAX_X, MIN_Y~MAX_Y) 並做反彈與邊界修正
     if (e.x < MIN_X || e.x > MAX_X) {
       e.vx *= -1;
       e.x = Math.max(MIN_X, Math.min(MAX_X, e.x));
     }
+
     if (e.y < MIN_Y || e.y > MAX_Y) {
       e.vy *= -1;
       e.y = Math.max(MIN_Y, Math.min(MAX_Y, e.y));
     }
-  });
+  }
 
-  // 2. 我方角色 AI & 攻擊 logic
-  battleState.players.forEach((p, idx) => {
-    if (enemies.length === 0) return;
+  // 2. 每 15 tick 找兩個最密集敵群
+  if (
+    enemies.length > 0 &&
+    (
+      battleState._clusterTick >= CLUSTER_UPDATE_TICKS ||
+      !battleState._clusterTargets ||
+      battleState._clusterTargets.length === 0
+    )
+  ) {
+    battleState._clusterTick = 0;
 
-    // 尋找最近敵人
-    let closest = enemies[0];
-    let minDist = 9999;
-    enemies.forEach(e => {
-      const d = Math.hypot(e.x - p.x, e.y - p.y);
-      if (d < minDist) { minDist = d; closest = e; }
-    });
+    const referencePlayer = players.length > 0 ? players[0] : { dps: 0 };
+    const clusterRange = getAttackRange(referencePlayer);
+    const clusterRangeSq = clusterRange * clusterRange;
+    const clusterTargets = [];
 
-    p.angleOffset += 0.02;
-    const targetX = closest.x + Math.cos(p.angleOffset) * 15;
-    const targetY = closest.y + Math.sin(p.angleOffset) * 15;
+    let bestTarget1 = enemies[0];
+    let bestCount1 = 0;
 
-    const dx = targetX - p.x;
-    const dy = targetY - p.y;
-    const dist = Math.hypot(dx, dy);
-    if (dist > 1) {
-      p.x += (dx / dist) * 1.2;
-      p.y += (dy / dist) * 1.2;
-    }
+    for (let i = 0; i < enemies.length; i++) {
+      const target = enemies[i];
+      let nearbyCount = 0;
 
-    // 💡 我方成員互相推開，避免重疊
-    battleState.players.forEach((otherP, oIdx) => {
-      if (idx !== oIdx) {
-        const pdx = p.x - otherP.x;
-        const pdy = p.y - otherP.y;
-        const pDist = Math.hypot(pdx, pdy);
-        if (pDist < 7 && pDist > 0) {
-          p.x += (pdx / pDist) * 0.6;
-          p.y += (pdy / pDist) * 0.6;
+      for (let j = 0; j < enemies.length; j++) {
+        const other = enemies[j];
+
+        if (
+          distSq(
+            target.x,
+            target.y,
+            other.x,
+            other.y
+          ) <= clusterRangeSq
+        ) {
+          nearbyCount++;
         }
       }
+
+      if (nearbyCount > bestCount1) {
+        bestCount1 = nearbyCount;
+        bestTarget1 = target;
+      }
+    }
+
+    clusterTargets.push({
+      x: bestTarget1.x,
+      y: bestTarget1.y,
+      count: bestCount1
     });
 
-    // 💡【新增】我方成員與敵人互相推開，避免重疊遮擋
-    enemies.forEach(e => {
-      const edx = p.x - e.x;
-      const edy = p.y - e.y;
-      const eDist = Math.hypot(edx, edy);
-      const MIN_PE_DIST = 6; // 我方與敵人的防重疊安全距離 (視圖示大小調整，約 6%)
+    // 第二個密集點
+    if (enemies.length > 1) {
+      let bestTarget2 = null;
+      let bestCount2 = 0;
 
-      if (eDist < MIN_PE_DIST && eDist > 0) {
-        const pushForce = (MIN_PE_DIST - eDist) * 0.25; // 越近推力越強
-        const nx = edx / eDist;
-        const ny = edy / eDist;
+      for (let i = 0; i < enemies.length; i++) {
+        const target = enemies[i];
 
-        // 我方反向推開
+        if (
+          distSq(
+            target.x,
+            target.y,
+            bestTarget1.x,
+            bestTarget1.y
+          ) < MIN_CLUSTER_DISTANCE_SQ
+        ) {
+          continue;
+        }
+
+        let nearbyCount = 0;
+
+        for (let j = 0; j < enemies.length; j++) {
+          const other = enemies[j];
+
+          if (
+            distSq(
+              target.x,
+              target.y,
+              other.x,
+              other.y
+            ) <= clusterRangeSq
+          ) {
+            nearbyCount++;
+          }
+        }
+
+        if (nearbyCount > bestCount2) {
+          bestCount2 = nearbyCount;
+          bestTarget2 = target;
+        }
+      }
+
+      if (bestTarget2) {
+        clusterTargets.push({
+          x: bestTarget2.x,
+          y: bestTarget2.y,
+          count: bestCount2
+        });
+      }
+    }
+
+    battleState._clusterTargets = clusterTargets;
+  }
+
+  // 3. 我方 AI + 攻擊圈傷害
+  for (let idx = 0; idx < players.length; idx++) {
+    const p = players[idx];
+
+    if (enemies.length === 0) continue;
+
+    const clusterTargets = battleState._clusterTargets;
+    let targetX;
+    let targetY;
+
+    if (clusterTargets && clusterTargets.length > 0) {
+      const clusterIndex = idx % clusterTargets.length;
+      targetX = clusterTargets[clusterIndex].x;
+      targetY = clusterTargets[clusterIndex].y;
+    } else {
+      targetX = enemies[0].x;
+      targetY = enemies[0].y;
+    }
+
+    // 最近敵人備援
+    let closest = enemies[0];
+    let minDistSq = distSq(p.x, p.y, closest.x, closest.y);
+
+    for (let i = 1; i < enemies.length; i++) {
+      const e = enemies[i];
+      const dSq = distSq(p.x, p.y, e.x, e.y);
+
+      if (dSq < minDistSq) {
+        minDistSq = dSq;
+        closest = e;
+      }
+    }
+
+    // 確認聚怪點仍然有效
+    let targetStillValid = false;
+
+    if (clusterTargets && clusterTargets.length > 0) {
+      const clusterIndex = idx % clusterTargets.length;
+      const target = clusterTargets[clusterIndex];
+
+      for (let i = 0; i < enemies.length; i++) {
+        if (
+          distSq(
+            target.x,
+            target.y,
+            enemies[i].x,
+            enemies[i].y
+          ) < 36
+        ) {
+          targetStillValid = true;
+          break;
+        }
+      }
+    }
+
+    if (!targetStillValid) {
+      targetX = closest.x;
+      targetY = closest.y;
+    }
+
+    // AI 移動
+    const attackRange = getAttackRange(p);
+    const attackRangeSq = attackRange * attackRange;
+    const targetDistSq = distSq(p.x, p.y, targetX, targetY);
+
+    if (targetDistSq > attackRangeSq) {
+      p.angleOffset += 0.02;
+
+      const approachX =
+        targetX +
+        Math.cos(p.angleOffset + idx * 1.2) * 5;
+
+      const approachY =
+        targetY +
+        Math.sin(p.angleOffset + idx * 1.2) * 5;
+
+      const dx = approachX - p.x;
+      const dy = approachY - p.y;
+      const moveDistSq = dx * dx + dy * dy;
+
+      if (moveDistSq > 1) {
+        const moveDist = Math.sqrt(moveDistSq);
+
+        p.x += (dx / moveDist) * 1.2;
+        p.y += (dy / moveDist) * 1.2;
+      }
+    } else {
+      p.angleOffset += 0.025;
+
+      const orbitX =
+        targetX +
+        Math.cos(p.angleOffset + idx * 1.2) * 5;
+
+      const orbitY =
+        targetY +
+        Math.sin(p.angleOffset + idx * 1.2) * 5;
+
+      const dx = orbitX - p.x;
+      const dy = orbitY - p.y;
+      const moveDistSq = dx * dx + dy * dy;
+
+      if (moveDistSq > 1) {
+        const moveDist = Math.sqrt(moveDistSq);
+
+        p.x += (dx / moveDist) * 0.7;
+        p.y += (dy / moveDist) * 0.7;
+      }
+    }
+
+    // 我方成員互相推開
+    for (let oIdx = idx + 1; oIdx < players.length; oIdx++) {
+      const otherP = players[oIdx];
+
+      const pdx = p.x - otherP.x;
+      const pdy = p.y - otherP.y;
+      const pDistSq = pdx * pdx + pdy * pdy;
+
+      if (pDistSq < 49 && pDistSq > 0) {
+        const pDist = Math.sqrt(pDistSq);
+        const pushForce = (7 - pDist) * 0.3;
+
+        const nx = pdx / pDist;
+        const ny = pdy / pDist;
+
         p.x += nx * pushForce;
         p.y += ny * pushForce;
 
-        // 敵人同步被輕微反推（增加碰撞真實感）
+        otherP.x -= nx * pushForce;
+        otherP.y -= ny * pushForce;
+      }
+    }
+
+    // 我方與敵人防止重疊
+    const MIN_PE_DIST = 6;
+    const MIN_PE_DIST_SQ = MIN_PE_DIST * MIN_PE_DIST;
+
+    for (let i = 0; i < enemies.length; i++) {
+      const e = enemies[i];
+
+      const edx = p.x - e.x;
+      const edy = p.y - e.y;
+      const eDistSq = edx * edx + edy * edy;
+
+      if (eDistSq < MIN_PE_DIST_SQ && eDistSq > 0) {
+        const eDist = Math.sqrt(eDistSq);
+        const pushForce = (MIN_PE_DIST - eDist) * 0.25;
+
+        const nx = edx / eDist;
+        const ny = edy / eDist;
+
+        p.x += nx * pushForce;
+        p.y += ny * pushForce;
+
         e.x -= nx * (pushForce * 0.5);
         e.y -= ny * (pushForce * 0.5);
 
-        // 敵人邊界限制
         e.x = Math.max(MIN_X, Math.min(MAX_X, e.x));
         e.y = Math.max(MIN_Y, Math.min(MAX_Y, e.y));
       }
-    });
+    }
 
-    // 💡 我方座標邊界鎖定：確保不會被推離或跑到戰場容器之外
+    // 座標限制
     p.x = Math.max(MIN_X, Math.min(MAX_X, p.x));
     p.y = Math.max(MIN_Y, Math.min(MAX_Y, p.y));
 
-    // 技能與攻擊邏輯
-    p.skillCooldown++;
-    if (p.skillCooldown >= 12) {
-      p.skillCooldown = 0;
+    // 攻擊圈傷害
+    const damage = (p.dps || 0) * 0.15;
 
-      const sortedEnemies = [...enemies]
-        .map(e => ({ enemy: e, dist: Math.hypot(e.x - p.x, e.y - p.y) }))
-        .sort((a, b) => a.dist - b.dist);
+    if (damage > 0) {
+      for (let i = 0; i < enemies.length; i++) {
+        const e = enemies[i];
 
-      const targetEnemies = sortedEnemies.slice(0, 5);
-      const color = (typeof TAG_COLORS !== 'undefined' && TAG_COLORS[p.tag]) || '#ffcb05';
+        const dx = e.x - p.x;
+        const dy = e.y - p.y;
+        const distanceSq = dx * dx + dy * dy;
 
-      battleState.effects.push({
-        type: 'aoe_wave',
-        x: p.x,
-        y: p.y,
-        color: color,
-        life: 5
-      });
-
-      targetEnemies.forEach(item => {
-        item.enemy.hp -= p.dps * 1.5;
-        battleState.effects.push({
-          type: 'hit',
-          x: item.enemy.x,
-          y: item.enemy.y,
-          color: color,
-          life: 3
-        });
-      });
+        if (distanceSq <= attackRangeSq) {
+          e.hp -= damage;
+        }
+      }
     }
-  });
-
-  // 3. 動態效果衰減
-  for (let i = battleState.effects.length - 1; i >= 0; i--) {
-    battleState.effects[i].life--;
-    if (battleState.effects[i].life <= 0) battleState.effects.splice(i, 1);
   }
 
-  // 4. 擊殺判斷與 Mega 進化觸發
+  // 4. 擊殺判斷與 Mega
   for (let i = enemies.length - 1; i >= 0; i--) {
     if (enemies[i].hp <= 0) {
       battleState.killCount++;
       enemies.splice(i, 1);
 
-      if (battleState.killCount >= 10 && typeof triggerMegaEvolution === 'function') {
+      if (
+        battleState.killCount >= 10 &&
+        typeof triggerMegaEvolution === 'function'
+      ) {
         triggerMegaEvolution();
       }
     }
   }
 
-  // 5. 波數推進與下一波敵人在全場分佈初始化
+  // 5. 下一波
   if (enemies.length === 0) {
+    battleState._clusterTargets = null;
+    battleState._clusterTick = 0;
+
     battleState.currentWaveIndex++;
-    if (battleState.currentWaveIndex < (battleState.waves?.length || 3)) {
-      const nextWaveRaw = battleState.waves[battleState.currentWaveIndex] || [];
-      
-      // 💡 推進到下一波時，同樣給予全場座標、加速屬性與隨機方向
+
+    if (
+      battleState.currentWaveIndex <
+      (battleState.waves?.length || 3)
+    ) {
+      const nextWaveRaw =
+        battleState.waves[
+          battleState.currentWaveIndex
+        ] || [];
+
       battleState.enemies = nextWaveRaw.map(e => ({
         ...e,
+
+        _battleDomId:
+          `enemy_${Date.now()}_${Math.random()
+            .toString(36)
+            .slice(2, 9)}`,
+
         x: 10 + Math.random() * 80,
         y: 15 + Math.random() * 35,
+
         speed: 0.8 + Math.random() * 0.6,
+
         vx: (Math.random() - 0.5) * 2,
         vy: (Math.random() - 0.5) * 2
       }));
     } else {
-      endBattle(true, "成功摧毀所有敵方大軍！");
+      endBattle(
+        true,
+        "成功摧毀所有敵方大軍！"
+      );
+
       return;
     }
   }
 
-  // 重新繪製畫面
+  // 6. 更新畫面
   if (typeof renderDynamicStage === 'function') {
     renderDynamicStage();
   }
 }
+
+
+
 
 // ==================== 5. Mega 進化對話框與系統 (更新圖源) ====================
 
@@ -7205,75 +7417,409 @@ function renderDynamicStage() {
   const stageEl = document.getElementById("battleStage");
   if (!stageEl) return;
 
-  let html = '';
+  // =========================================================
+  // 第一次建立 DOM
+  // =========================================================
 
-  // 1. 渲染 AOE 衝擊波與打擊特效（放在最底層）
-  battleState.effects.forEach(eff => {
-    if (eff.type === 'aoe_wave') {
-      html += `
-        <div class="skill-aoe-wave" style="
-          left: ${eff.x}%; top: ${eff.y}%;
-          border-color: ${eff.color};
-        "></div>
-      `;
-    } else if (eff.type === 'hit') {
-      html += `
-        <div class="hit-spark" style="
-          left: ${eff.x}%; top: ${eff.y}%;
-          background: ${eff.color};
-        "></div>
-      `;
+  if (!stageEl._battleDomInitialized) {
+    stageEl.innerHTML = '';
+
+    stageEl._battleEnemyMap = new Map();
+    stageEl._battlePlayerMap = new Map();
+
+    stageEl._battleDomInitialized = true;
+  }
+
+  const enemyMap = stageEl._battleEnemyMap;
+  const playerMap = stageEl._battlePlayerMap;
+
+  // =========================================================
+  // 1. 更新 / 建立我方角色
+  // =========================================================
+
+  const currentPlayerIds = new Set();
+
+  battleState.players.forEach((unit, index) => {
+    // 使用穩定 ID，避免每次更新重新建立 DOM
+    const playerId =
+      unit.id ??
+      unit.uid ??
+      unit.playerId ??
+      unit.pokeId ??
+      `player_${index}`;
+
+    currentPlayerIds.add(String(playerId));
+
+    let wrapper = playerMap.get(String(playerId));
+
+    // -------------------------------------------------------
+    // 第一次出現：建立 DOM
+    // -------------------------------------------------------
+
+    if (!wrapper) {
+      wrapper = document.createElement('div');
+
+      wrapper.className =
+        `player-sprite-wrapper${unit.isMega ? ' mega-active' : ''}`;
+
+      // 攻擊圈
+      const attackRangeEl =
+        document.createElement('div');
+
+      attackRangeEl.className =
+        'player-attack-range';
+
+      // MEGA 標籤
+      const megaTag =
+        document.createElement('div');
+
+      megaTag.className =
+        'mega-tag-aura';
+
+      megaTag.textContent = 'MEGA';
+
+      // 圖片
+      const img =
+        document.createElement('img');
+
+      img.className =
+        'battle-sprite-img';
+
+      img.alt =
+        unit.name || '';
+
+      wrapper.appendChild(attackRangeEl);
+      wrapper.appendChild(megaTag);
+      wrapper.appendChild(img);
+
+      stageEl.appendChild(wrapper);
+
+      playerMap.set(
+        String(playerId),
+        wrapper
+      );
+    }
+
+    // -------------------------------------------------------
+    // 更新座標
+    // -------------------------------------------------------
+
+    const zIndex =
+      Math.floor(unit.y * 10);
+
+    wrapper.style.left =
+      `${unit.x}%`;
+
+    wrapper.style.top =
+      `${unit.y}%`;
+
+    wrapper.style.zIndex =
+      zIndex;
+
+    // -------------------------------------------------------
+    // 更新 Mega 狀態
+    // -------------------------------------------------------
+
+    wrapper.classList.toggle(
+      'mega-active',
+      !!unit.isMega
+    );
+
+    const megaTag =
+      wrapper.querySelector('.mega-tag-aura');
+
+    if (megaTag) {
+      megaTag.style.display =
+        unit.isMega ? 'block' : 'none';
+    }
+
+    // -------------------------------------------------------
+    // 更新攻擊圈
+    // -------------------------------------------------------
+
+    const color =
+      (
+        typeof TAG_COLORS !== 'undefined' &&
+        TAG_COLORS[unit.tag]
+      )
+        ? TAG_COLORS[unit.tag]
+        : '#ffcb05';
+
+    const attackRange = 110;
+
+    const attackRangeEl =
+      wrapper.querySelector(
+        '.player-attack-range'
+      );
+
+    if (attackRangeEl) {
+      attackRangeEl.style.width =
+        `${attackRange}px`;
+
+      attackRangeEl.style.height =
+        `${attackRange}px`;
+
+      attackRangeEl.style.left =
+        '50%';
+
+      attackRangeEl.style.top =
+        '50%';
+
+      attackRangeEl.style.borderColor =
+        color;
+
+      attackRangeEl.style.color =
+        color;
+    }
+
+    // -------------------------------------------------------
+    // 更新圖片
+    // -------------------------------------------------------
+
+    const img =
+      wrapper.querySelector(
+        '.battle-sprite-img'
+      );
+
+    const spriteUrl =
+      getPlayerSpriteUrl(unit);
+
+    if (
+      img &&
+      img.dataset.src !== spriteUrl
+    ) {
+      img.src = spriteUrl;
+      img.dataset.src = spriteUrl;
+    }
+
+    if (img) {
+      img.alt =
+        unit.name || '';
     }
   });
 
-  // 2. 合併我方與敵人，並依據 Y 座標從小到大排序（Y-Sorting 深度排序）
-  // 靠上面的角色 (Y 較小) 先渲染，靠下面的角色 (Y 較大) 後渲染，後渲染者會擋住前者
-  const sortedUnits = [
-    ...battleState.enemies.map(e => ({ ...e, isEnemy: true })),
-    ...battleState.players.map(p => ({ ...p, isEnemy: false }))
-  ].sort((a, b) => a.y - b.y);
+  // =========================================================
+  // 2. 移除已不存在的我方角色
+  // =========================================================
 
-  // 3. 依據排序後的順序進行繪製，並加上動態 z-index 雙重保險
-  sortedUnits.forEach(unit => {
-    const zIndex = Math.floor(unit.y * 10); // Y 軸越大，z-index 越高
+  for (const [id, wrapper] of playerMap) {
+    if (!currentPlayerIds.has(id)) {
+      wrapper.remove();
+      playerMap.delete(id);
+    }
+  }
 
-    if (unit.isEnemy) {
-      // 渲染敵人
-      const gifUrl = getPokeGifUrl(unit.pokeId);
-      const fallbackUrl = getImgUrl(unit.pokeId);
-      const hpPercent = Math.max(0, (unit.hp / unit.maxHp) * 100);
+  // =========================================================
+  // 3. 更新 / 建立敵人
+  // =========================================================
 
-      html += `
-        <div class="enemy-single-wrapper ${unit.type}" style="
-          left: ${unit.x}%; top: ${unit.y}%; 
-          width: ${unit.size}px; height: ${unit.size}px;
-          z-index: ${zIndex};
-        ">
-          <div class="hp-bar-mini">
-            <div class="hp-bar-fill" style="width: ${hpPercent}%;"></div>
-          </div>
-          <img class="battle-sprite-img" src="${gifUrl}" 
-               onerror="this.onerror=null; this.src='${fallbackUrl}';">
-        </div>
-      `;
-    } else {
-      // 渲染我方隊員
-      const spriteUrl = getPlayerSpriteUrl(unit);
+  const currentEnemyIds = new Set();
 
-      html += `
-        <div class="player-sprite-wrapper ${unit.isMega ? 'mega-active' : ''}" style="
-          left: ${unit.x}%; top: ${unit.y}%;
-          z-index: ${zIndex};
-        ">
-          ${unit.isMega ? '<div class="mega-tag-aura">MEGA</div>' : ''}
-          <img class="battle-sprite-img" src="${spriteUrl}" alt="${unit.name}">
-        </div>
-      `;
+  battleState.enemies.forEach((unit, index) => {
+    /*
+     * 優先使用原本資料中的 id。
+     * 如果沒有 id，第一次建立時給予穩定 DOM ID。
+     */
+    if (unit._battleDomId == null) {
+      unit._battleDomId =
+        `enemy_${Date.now()}_${index}_${Math.random()
+          .toString(36)
+          .slice(2, 7)}`;
+    }
+
+    const enemyId =
+      String(unit._battleDomId);
+
+    currentEnemyIds.add(enemyId);
+
+    let wrapper =
+      enemyMap.get(enemyId);
+
+    // -------------------------------------------------------
+    // 第一次出現：建立 DOM
+    // -------------------------------------------------------
+
+    if (!wrapper) {
+      wrapper =
+        document.createElement('div');
+
+      wrapper.className =
+        `enemy-single-wrapper ${unit.type || ''}`;
+
+      // HP
+      const hpBar =
+        document.createElement('div');
+
+      hpBar.className =
+        'hp-bar-mini';
+
+      const hpFill =
+        document.createElement('div');
+
+      hpFill.className =
+        'hp-bar-fill';
+
+      hpBar.appendChild(hpFill);
+
+      // 圖片
+      const img =
+        document.createElement('img');
+
+      img.className =
+        'battle-sprite-img';
+
+      wrapper.appendChild(hpBar);
+      wrapper.appendChild(img);
+
+      stageEl.appendChild(wrapper);
+
+      enemyMap.set(
+        enemyId,
+        wrapper
+      );
+    }
+
+    // -------------------------------------------------------
+    // 更新座標
+    // -------------------------------------------------------
+
+    const zIndex =
+      Math.floor(unit.y * 10);
+
+    wrapper.style.left =
+      `${unit.x}%`;
+
+    wrapper.style.top =
+      `${unit.y}%`;
+
+    wrapper.style.width =
+      `${unit.size}px`;
+
+    wrapper.style.height =
+      `${unit.size}px`;
+
+    wrapper.style.zIndex =
+      zIndex;
+
+    // -------------------------------------------------------
+    // 更新敵人類型
+    // -------------------------------------------------------
+
+    const expectedClass =
+      `enemy-single-wrapper ${unit.type || ''}`;
+
+    if (
+      wrapper.className !==
+      expectedClass
+    ) {
+      wrapper.className =
+        expectedClass;
+    }
+
+    // -------------------------------------------------------
+    // 更新 HP
+    // -------------------------------------------------------
+
+    const hpFill =
+      wrapper.querySelector(
+        '.hp-bar-fill'
+      );
+
+    const hpPercent =
+      unit.maxHp > 0
+        ? Math.max(
+            0,
+            Math.min(
+              100,
+              (unit.hp / unit.maxHp) * 100
+            )
+          )
+        : 0;
+
+    if (hpFill) {
+      hpFill.style.width =
+        `${hpPercent}%`;
+    }
+
+    // -------------------------------------------------------
+    // 更新圖片
+    // -------------------------------------------------------
+
+    const img =
+      wrapper.querySelector(
+        '.battle-sprite-img'
+      );
+
+    const gifUrl =
+      getPokeGifUrl(unit.pokeId);
+
+    const fallbackUrl =
+      getImgUrl(unit.pokeId);
+
+    if (
+      img &&
+      img.dataset.pokeId !== String(unit.pokeId)
+    ) {
+      img.dataset.pokeId =
+        String(unit.pokeId);
+
+      img.onerror = function () {
+        this.onerror = null;
+        this.src = fallbackUrl;
+      };
+
+      img.src = gifUrl;
     }
   });
 
-  stageEl.innerHTML = html;
+  // =========================================================
+  // 4. 移除已死亡 / 不存在的敵人 DOM
+  // =========================================================
+
+  for (const [id, wrapper] of enemyMap) {
+    if (!currentEnemyIds.has(id)) {
+      wrapper.remove();
+      enemyMap.delete(id);
+    }
+  }
+
+  // =========================================================
+  // 5. Y 軸深度排序
+  //
+  // 不重新建立 DOM，只調整 z-index
+  // =========================================================
+
+  battleState.players.forEach((unit, index) => {
+    const playerId =
+      unit.id ??
+      unit.uid ??
+      unit.playerId ??
+      unit.pokeId ??
+      `player_${index}`;
+
+    const wrapper =
+      playerMap.get(String(playerId));
+
+    if (wrapper) {
+      wrapper.style.zIndex =
+        Math.floor(unit.y * 10);
+    }
+  });
+
+  battleState.enemies.forEach(unit => {
+    const wrapper =
+      enemyMap.get(
+        String(unit._battleDomId)
+      );
+
+    if (wrapper) {
+      wrapper.style.zIndex =
+        Math.floor(unit.y * 10);
+    }
+  });
 }
+
+
 
 // ==================== 結算與獎勵系統 (修正版) ====================
 
@@ -7497,7 +8043,7 @@ function applyDungeonRewards(dungeon, floorNum) {
   if (dungeon && dungeon.isEvent) {
     // 活動副本
     rewards.masterBall = (floorNum === 10) ? 3 : 1;
-    rewards.megaShard = (floorNum === 10) ? 3 : ((floorNum >= 6) ? 1 : 0);
+    rewards.megaShard = (floorNum === 10) ? 5 : ((floorNum >= 6) ? 3 : 1);
   } else {
     // 普通副本
     rewards.pokeBall = (floorNum === 10) ? 10 : 5;
