@@ -1,0 +1,25 @@
+{
+  "name": "Boss Tetris",
+  "short_name": "BossTetris",
+  "description": "打Boss 俄羅斯方塊",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fbf3e3",
+  "theme_color": "#f4a94d",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/Quokka%20battle.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/Quokka%20battle.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
