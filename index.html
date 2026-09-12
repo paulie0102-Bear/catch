@@ -107,6 +107,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
 .bossPortraitWrap{display:flex; flex-direction:column; align-items:center; padding:20px 16px 8px;}
 #bossImg{width:min(58vw,240px); height:min(58vw,240px); object-fit:contain;
   filter:drop-shadow(0 8px 24px rgba(0,0,0,.35));}
+.bossName{margin-top:8px; font-size:16px; font-weight:700; color:var(--text);}
 .hpBarOuter{width:88%; max-width:360px; height:16px; background:var(--deep); border-radius:10px;
   overflow:hidden; margin-top:14px; border:1px solid var(--deepline);}
 .hpBarInner{height:100%; background:linear-gradient(90deg,var(--hp-full),#3fcbb0); width:100%;
@@ -326,7 +327,8 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
     <div class="topbar"><button class="backBtn" data-back>返回</button><h2>關卡</h2></div>
     <div class="panelBody">
       <div class="bossPortraitWrap">
-        <img id="bossImg" src="https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss1.png" alt="boss">
+        <img id="bossImg" src="" alt="boss">
+        <div class="bossName" id="bossName"></div>
         <div class="hpBarOuter"><div class="hpBarInner" id="stageHpBar"></div></div>
         <div class="staminaRow" id="staminaRow"></div>
         <div class="staminaLabel" id="staminaLabel">5 / 5</div>
@@ -351,7 +353,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
       <div id="rightPanel">
         <button id="leaveBattleBtn" title="離開">✕</button>
         <div id="bossCorner">
-          <img id="bossImgBattle" src="https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss1.png" alt="boss">
+          <img id="bossImgBattle" src="" alt="boss">
           <div class="hpBarOuter battle"><div class="hpBarInner" id="battleHpBar"></div></div>
         </div>
         <div class="nextCol">
@@ -477,13 +479,136 @@ const CONFIG = {
   seasonLengthDays: 14,
   seasonAnchor: { year:2026, month:8, day:14, hour:8 }, // 第一輪開始：2026/9/14（一）早上8點
   dailyTaskPoints: 10, challengeTaskPoints: 10, dailyResetHour: 8,
-  challengeGoals: [10,20,30],
-  bossImgUrl: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss1.png"
+  challengeGoals: [10,20,30]
 };
 
-const BOSS_DATA = {
-  boss001: { name:"Boss", img: CONFIG.bossImgUrl, maxHp: CONFIG.boss.maxHp, attackIntervalMs: CONFIG.boss.attackIntervalMs }
-};
+/* -----------------------------------------------------------
+   BOSS 集中資料表：每一輪活動的 Boss 都從這裡讀取，
+   不要在程式其他地方寫死 Boss 圖片網址、名稱或數值。
+
+   要新增 /更換 Boss，只需要在這個陣列裡新增或修改一筆資料即可：
+   - id：唯一識別碼，隨意命名，例如 "boss004"
+   - name：畫面上顯示的 Boss 名稱
+   - img：Boss 圖片網址（關卡畫面與戰鬥畫面共用同一張）
+   - maxHp（選填）：這個 Boss 的血量上限，沒填就用下面 CONFIG.boss.maxHp 當預設值
+   - attackIntervalMs（選填）：這個 Boss 的攻擊間隔（毫秒），沒填就用 CONFIG.boss.attackIntervalMs 當預設值
+
+   輪次對應規則：第 1 輪 → BOSS_LIST[0]、第 2 輪 → BOSS_LIST[1]，以此類推；
+   輪次數字超過陣列長度時會自動從頭循環，不會報錯。
+----------------------------------------------------------- */
+const BOSS_LIST = [
+  {
+  id: "boss001",
+  name: "棄天帝",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss1.png"
+},
+{
+  id: "boss002",
+  name: "人覺非常君",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss2.png"
+},
+{
+  id: "boss003",
+  name: "八岐邪神",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss3.png"
+},
+{
+  id: "boss004",
+  name: "死神",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss4.png"
+},
+{
+  id: "boss005",
+  name: "天地主宰",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss5.png"
+},
+{
+  id: "boss006",
+  name: "天策真龍",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss6.png"
+},
+{
+  id: "boss007",
+  name: "魔王子",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss7.png"
+},
+{
+  id: "boss008",
+  name: "闍皇西蒙",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss8.png"
+},
+{
+  id: "boss009",
+  name: "魔佛波旬",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss9.png"
+},
+{
+  id: "boss010",
+  name: "武君羅喉",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss10.png"
+},
+{
+  id: "boss011",
+  name: "地冥無神論",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss11.png"
+},
+{
+  id: "boss012",
+  name: "銀羽風少",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss12.png"
+},
+{
+  id: "boss013",
+  name: "螣邪郎",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss13.png"
+},
+{
+  id: "boss014",
+  name: "永夜劇作家",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss14.png"
+},
+{
+  id: "boss015",
+  name: "閻魔旱魃",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss15.png"
+},
+{
+  id: "boss016",
+  name: "魔化一頁書",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss16.png"
+},
+{
+  id: "boss017",
+  name: "吞佛童子",
+  img: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss17.png"
+},
+
+];
+
+// 取得「目前這一輪」對應到 BOSS_LIST 的索引；輪次超過陣列長度時自動循環（不會報錯）。
+function getCurrentBossIndex(){
+  const len = BOSS_LIST.length;
+  if(len<=0) return -1;
+  const roundIdx = (STATE && STATE.season && typeof STATE.season.index==="number") ? STATE.season.index : 0;
+  return ((roundIdx % len) + len) % len; // 保險處理負數，避免任何極端情況下出現負索引
+}
+// 取得「目前這一輪」的完整 Boss 資料（含套用預設值後的 maxHp / attackIntervalMs）。
+// 全部畫面（關卡 / 戰鬥）都應該呼叫這個函式取得 Boss 資訊，不要各自組資料。
+function getCurrentBoss(){
+  const idx = getCurrentBossIndex();
+  const def = idx>=0 ? BOSS_LIST[idx] : null;
+  if(!def){
+    // 保底：BOSS_LIST 意外被清空時，退回舊有的固定設定，讓遊戲仍可運作
+    return { id:"boss_fallback", name:"Boss", img:"", maxHp:CONFIG.boss.maxHp, attackIntervalMs:CONFIG.boss.attackIntervalMs };
+  }
+  return {
+    id: def.id,
+    name: def.name,
+    img: def.img,
+    maxHp: (typeof def.maxHp==="number") ? def.maxHp : CONFIG.boss.maxHp,
+    attackIntervalMs: (typeof def.attackIntervalMs==="number") ? def.attackIntervalMs : CONFIG.boss.attackIntervalMs
+  };
+}
 
 /* =========================================================
    GAME DATA (static content definitions)
@@ -1180,6 +1305,10 @@ function renderDecoPanel(){
 ========================================================= */
 function renderStage(){
   reconcileStamina(); scheduleSave();
+  const boss = getCurrentBoss();
+  $("#bossImg").src = boss.img;
+  $("#bossImg").alt = boss.name;
+  $("#bossName").textContent = boss.name;
   $("#stageHpBar").style.width = "100%";
   const row=$("#staminaRow"); row.innerHTML="";
   for(let i=0;i<CONFIG.stamina.max;i++){
@@ -1462,7 +1591,7 @@ function renderNext(){
   renderMiniBox($("#nextBox2"), nextQueue[1]);
 }
 function renderBossHp(){
-  const pct = Math.max(0, battleState.bossHp/CONFIG.boss.maxHp*100);
+  const pct = Math.max(0, battleState.bossHp/battleState.bossMaxHp*100);
   const bar=$("#battleHpBar");
   bar.style.width = pct+"%";
   bar.style.background = pct<25 ? "linear-gradient(90deg,var(--hp-low),#c33)" :
@@ -1478,15 +1607,22 @@ function renderBossHp(){
 function nowPerf(){
   return (typeof performance !== "undefined" && typeof performance.now === "function") ? performance.now() : Date.now();
 }
-const battleState = { status:"IDLE", paused:false, bossHp:CONFIG.boss.maxHp, attackTimer:null, activeStartTs:0, activeElapsedMs:0, elapsedMs:0, autoPausedByVisibility:false };
+const battleState = { status:"IDLE", paused:false, bossHp:CONFIG.boss.maxHp, bossMaxHp:CONFIG.boss.maxHp, bossAttackIntervalMs:CONFIG.boss.attackIntervalMs, attackTimer:null, activeStartTs:0, activeElapsedMs:0, elapsedMs:0, autoPausedByVisibility:false };
 let bossAnimClone=null, bossAnimTimeouts=[];
 
 function startBattle(){
+  // 「關卡畫面看到的 Boss」與「進入戰鬥後的 Boss」必須完全一致，
+  // 兩邊都一律呼叫 getCurrentBoss() 取得同一份資料，不再各自寫死。
+  const boss = getCurrentBoss();
   board=newBoard(); bag=[]; nextQueue=[]; current=null;
   cumulativeLines=0; combo=0; maxCombo=0;
-  battleState.status="PLAYING"; battleState.paused=false; battleState.bossHp=CONFIG.boss.maxHp;
+  battleState.status="PLAYING"; battleState.paused=false;
+  battleState.bossMaxHp=boss.maxHp; battleState.bossHp=boss.maxHp;
+  battleState.bossAttackIntervalMs=boss.attackIntervalMs;
   battleState.activeElapsedMs=0; battleState.activeStartTs=nowPerf(); battleState.elapsedMs=0;
   battleState.autoPausedByVisibility=false; // 避免延續上一場戰鬥殘留的 flag，造成新戰鬥一開始就誤判成「因背景被自動暫停」
+  $("#bossImgBattle").src = boss.img;
+  $("#bossImgBattle").alt = boss.name;
   buildBoardDom();
   renderBossHp();
   $("#resultOverlay").classList.remove("show");
@@ -1521,7 +1657,7 @@ function pauseBattleLoop(){
 }
 function scheduleBossAttack(){
   clearBossAttackTimer();
-  battleState.attackTimer = setTimeout(bossAttack, BOSS_DATA.boss001.attackIntervalMs);
+  battleState.attackTimer = setTimeout(bossAttack, battleState.bossAttackIntervalMs);
 }
 function clearBossAttackTimer(){
   if(battleState.attackTimer){ clearTimeout(battleState.attackTimer); battleState.attackTimer=null; }
