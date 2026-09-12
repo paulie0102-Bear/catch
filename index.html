@@ -1,0 +1,2171 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Boss Tetris</title>
+
+<!-- PWA -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#f4a94d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Boss Tetris">
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/Quokka%20battle.png">
+<style>
+:root{
+  --bg:#fbf3e3; --panel:#ffffff; --panel2:#ffe9c4; --line:#ecdab3;
+  --text:#4a3520; --sub:#a3835c; --accent:#f4a94d; --accent-ink:#4a2f00; --accent2:#ff6b6b;
+  --hp-full:#5ee6c8; --hp-mid:#f2c14e; --hp-low:#ff5a5a;
+  --deep:#2a2018; --deepline:#4a3d2c;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
+  overflow-x:hidden; width:100%; height:100%; overscroll-behavior:none;}
+#app{position:relative; width:100%; max-width:520px; margin:0 auto; min-height:100vh;
+  background:var(--bg); overflow:hidden;}
+.screen{display:none; position:absolute; inset:0; flex-direction:column; padding-top:var(--safe-t);}
+.screen.active{display:flex;}
+.topbar{display:flex; align-items:center; padding:12px 14px; flex-shrink:0;}
+.backBtn{background:var(--panel); border:1px solid var(--line); color:var(--text);
+  padding:8px 14px; border-radius:14px; font-size:14px; font-weight:600; touch-action:manipulation;}
+.backBtn:active, .backBtn.pressed{background:var(--panel2);}
+.topbar h2{margin:0 0 0 12px; font-size:16px; font-weight:700; color:var(--sub); letter-spacing:1px;}
+
+/* HOME (light, cute theme) */
+#homeScreen{padding-top:0; background:var(--bg);}
+#homeCanvasFrame{position:relative; flex:1; margin:14px 14px 10px; border-radius:26px;
+  border:3px solid var(--line); background:var(--panel); overflow:hidden;
+  box-shadow:0 6px 18px rgba(180,140,80,.12), inset 0 0 0 1px rgba(255,255,255,.6);}
+#homeCanvas{position:absolute; inset:0; overflow:hidden; background:transparent;}
+#homeCanvas.editing{outline:3px dashed var(--accent); outline-offset:-4px;}
+.deco{position:absolute; font-size:40px; line-height:1; touch-action:none; cursor:grab;
+  transform-origin:center center; filter:drop-shadow(0 2px 6px rgba(0,0,0,.25));}
+.deco.bgLayer{z-index:0;}
+.deco.selected{outline:2px dashed var(--accent); border-radius:8px;}
+.decoImg{width:56px; height:56px; object-fit:contain; display:block; pointer-events:none; -webkit-user-drag:none;}
+#decoToolbar{position:absolute; display:none; background:var(--panel); border:1px solid var(--line);
+  border-radius:14px; padding:8px; gap:6px;
+  grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr;
+  width:150px; z-index:50;
+  box-shadow:0 6px 18px rgba(0,0,0,.15);}
+#decoToolbar button{background:var(--panel2); color:var(--text); border:none;
+  border-radius:10px; padding:6px 4px; font-size:12px; font-weight:600; touch-action:manipulation;
+  white-space:nowrap; width:100%; height:36px;}
+#decoToolbar .scaleCell{display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background:var(--panel2); border-radius:10px; height:36px; padding:0 8px;}
+#decoToolbar .scaleCell span{font-size:11px; color:var(--sub); margin-bottom:1px;}
+#decoToolbar input[type=range]{width:100%; margin:0;}
+
+#gramophone{position:absolute; right:14px; bottom:14px; width:54px; height:54px;
+  border-radius:50%; cursor:pointer; touch-action:manipulation;
+  background:
+    radial-gradient(circle at 50% 50%, var(--accent) 0 7px, #161616 8px, #161616 100%),
+    repeating-radial-gradient(circle at 50% 50%, #333 0px, #333 1px, #101010 1px, #101010 4px);
+  border:3px solid #fff; z-index:20; box-shadow:0 4px 14px rgba(0,0,0,.25);}
+/* 反光光影：同心圓紋理本身是旋轉對稱的，單靠 transform:rotate 肉眼幾乎看不出在轉，
+   額外疊加一道非對稱的高光弧，隨唱片一起旋轉時才會有明顯「正在轉動」的感覺 */
+#gramophone::before{content:''; position:absolute; inset:0; border-radius:50%;
+  background:conic-gradient(from -40deg,
+    rgba(255,255,255,0) 0deg, rgba(255,255,255,.65) 18deg, rgba(255,255,255,0) 42deg,
+    rgba(255,255,255,0) 190deg, rgba(255,255,255,.28) 208deg, rgba(255,255,255,0) 226deg,
+    rgba(255,255,255,0) 360deg);
+  mix-blend-mode:screen; pointer-events:none;}
+#gramophone::after{content:''; position:absolute; left:50%; top:50%; width:6px; height:6px;
+  background:#161616; border-radius:50%; transform:translate(-50%,-50%);
+  box-shadow:0 0 0 1px rgba(255,255,255,.5); z-index:1;}
+#gramophone.playing{animation:spin 4s linear infinite;}
+@keyframes spin{from{transform:rotate(0)} to{transform:rotate(360deg)}}
+
+.homeEditBtn{position:absolute; left:24px; top:calc(24px + var(--safe-t)); background:var(--panel);
+  border:none; color:var(--sub); padding:9px 16px; border-radius:20px; font-size:12px; font-weight:700;
+  z-index:20; box-shadow:0 3px 10px rgba(180,140,80,.25); touch-action:manipulation;}
+.homeEditBtn.on{background:var(--accent); color:var(--accent-ink);}
+
+/* NAV (cute rounded pastel buttons, unified tactile feedback) */
+#navBar{display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:10px;
+  background:var(--panel); flex-shrink:0; height:158px; padding:10px 14px calc(10px + var(--safe-b));
+  border-top-left-radius:26px; border-top-right-radius:26px; box-shadow:0 -6px 20px rgba(0,0,0,.06);}
+#navBar button{border:none; font-size:13px; font-weight:700; border-radius:20px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  letter-spacing:1px; transition:transform .08s ease; touch-action:manipulation; -webkit-user-select:none;}
+#navBar button .navIcon{font-size:22px;}
+#navBar button:nth-child(1){background:#dff5ec; color:#1f7a5c;}
+#navBar button:nth-child(2){background:#e9e6ff; color:#5b4fc4;}
+#navBar button:nth-child(3){background:#ffe9ef; color:#c14b7a;}
+#navBar button:nth-child(4){background:#fff3d6; color:#a3760f;}
+#navBar button.pressed, #navBar button:active{transform:scale(.92); filter:brightness(.96);}
+
+/* GENERIC PANEL BODY */
+.panelBody{flex:1; overflow-y:auto; padding:16px; padding-bottom:calc(24px + var(--safe-b)); background:var(--bg);}
+
+/* STAGE / LEVEL SELECT */
+.bossPortraitWrap{display:flex; flex-direction:column; align-items:center; padding:20px 16px 8px;}
+#bossImg{width:min(58vw,240px); height:min(58vw,240px); object-fit:contain;
+  filter:drop-shadow(0 8px 24px rgba(0,0,0,.35));}
+.hpBarOuter{width:88%; max-width:360px; height:16px; background:var(--deep); border-radius:10px;
+  overflow:hidden; margin-top:14px; border:1px solid var(--deepline);}
+.hpBarInner{height:100%; background:linear-gradient(90deg,var(--hp-full),#3fcbb0); width:100%;
+  transition:width .35s ease;}
+.staminaRow{display:flex; gap:6px; margin-top:18px;}
+.staminaDot{width:14px; height:14px; border-radius:50%; background:var(--panel2); border:1px solid var(--line);}
+.staminaDot.filled{background:var(--accent);}
+.staminaLabel{margin-top:8px; font-size:13px; color:var(--sub);}
+#startBattleBtn{margin-top:22px; background:var(--accent); color:var(--accent-ink); font-weight:700;
+  border:none; border-radius:14px; padding:14px 44px; font-size:16px; touch-action:manipulation;}
+#startBattleBtn:disabled{background:var(--panel2); color:var(--sub);}
+
+/* BATTLE */
+#battleScreen{background:var(--bg);}
+#battleMain{flex:1; display:flex; flex-direction:row; min-height:0; padding:6px 6px calc(4px + var(--safe-b)); gap:6px;}
+#leftPanel{flex:1; min-width:0; min-height:0; display:flex; flex-direction:column;}
+#boardWrap{flex:1; min-height:0; display:flex; align-items:center; justify-content:center; overflow:visible;}
+#board{display:grid; grid-template-columns:repeat(10,1fr); grid-template-rows:repeat(20,1fr);
+  background:var(--deep); border:2px solid var(--deepline); border-radius:6px; overflow:hidden; flex-shrink:0;}
+.cell{border:1px solid rgba(255,255,255,.04); box-sizing:border-box;}
+.controls{display:flex; padding:8px 2px 4px; gap:8px; flex-shrink:0;}
+.ctrlBtn{flex:1; background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  color:var(--text); font-size:22px; height:58px; display:flex; align-items:center; justify-content:center;
+  touch-action:none;}
+.ctrlBtn:active{background:var(--panel2);}
+
+#battlePauseOverlay{position:fixed; inset:0; background:rgba(20,14,6,.55); opacity:0; pointer-events:none;
+  transition:opacity .3s ease; z-index:400;}
+
+#rightPanel{width:112px; flex-shrink:0; display:flex; flex-direction:column; align-items:center;
+  gap:10px; padding-top:2px; overflow:visible;}
+#leaveBattleBtn{width:32px; height:32px; border-radius:50%; background:var(--panel);
+  border:1px solid var(--line); color:var(--sub); font-size:15px; flex-shrink:0;}
+#leaveBattleBtn:active{background:var(--panel2);}
+#bossCorner{display:flex; flex-direction:column; align-items:center; gap:6px; overflow:visible; padding:4px 0;}
+#bossImgBattle{width:88px; height:88px; object-fit:contain; will-change:transform;}
+.hpBarOuter.battle{width:96px; max-width:96px; height:8px; margin-top:0;}
+.nextCol{display:flex; flex-direction:column; align-items:center; gap:8px;}
+.nextLabel{font-size:10px; color:var(--sub); letter-spacing:2px;}
+.nextBox{width:52px; height:52px; background:var(--deep); border:1px solid var(--deepline); border-radius:6px;
+  display:grid; grid-template-columns:repeat(4,1fr); grid-template-rows:repeat(4,1fr);}
+.nextBox .cell{border:none;}
+
+.piece-I,.piece-O,.piece-T,.piece-S,.piece-Z,.piece-J,.piece-L{
+  border-radius:3px; box-shadow:inset 0 0 0 2px rgba(255,255,255,.3), inset -4px -4px 6px rgba(0,0,0,.35),
+  inset 3px 3px 4px rgba(255,255,255,.3);}
+.piece-I{background:linear-gradient(150deg,#8ff0ff,#22aecf);}
+.piece-O{background:linear-gradient(150deg,#fff6a0,#dfb92e);}
+.piece-T{background:linear-gradient(150deg,#eab4ff,#a244d6);}
+.piece-S{background:linear-gradient(150deg,#adffc7,#33c96a);}
+.piece-Z{background:linear-gradient(150deg,#ffb6b6,#dd4444);}
+.piece-J{background:linear-gradient(150deg,#b0c4ff,#4863d9);}
+.piece-L{background:linear-gradient(150deg,#ffd7a0,#dd8a30);}
+.piece-garbage{background:linear-gradient(150deg,#54545e,#28282e); box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);}
+.piece-bomb{background:radial-gradient(circle at 35% 35%,#4a4a4a,#0e0e0e 70%); box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);}
+.cell.ghost{opacity:.32; box-shadow:none !important; outline:2px solid rgba(255,255,255,.55); outline-offset:-2px; border-radius:3px;}
+.piece-bomb::after{content:'💣'; display:flex; align-items:center; justify-content:center; font-size:70%;}
+
+.shakeBoss{animation:bossShake .45s ease;}
+@keyframes bossShake{
+  0%{transform:scale(1) rotate(0)}
+  20%{transform:scale(1.35) rotate(-6deg)}
+  40%{transform:scale(1.35) rotate(6deg)}
+  60%{transform:scale(1.25) rotate(-5deg)}
+  80%{transform:scale(1.15) rotate(3deg)}
+  100%{transform:scale(1) rotate(0)}
+}
+@media (prefers-reduced-motion: reduce){ .shakeBoss{animation:none;} #gramophone.playing{animation:none;} .musicRowIcon.spinning{animation:none;} }
+
+/* RESULT */
+#resultOverlay, #gameoverOverlay{position:absolute; inset:0; background:rgba(0,0,0,.85);
+  display:none; flex-direction:column; align-items:center; justify-content:center; z-index:80; text-align:center;}
+#resultOverlay.show, #gameoverOverlay.show{display:flex;}
+.resultTitle{font-size:26px; font-weight:800; letter-spacing:2px; color:var(--accent);}
+.resultTitle.go{color:var(--accent2);}
+.resultStat{margin-top:18px; color:var(--sub); font-size:13px; letter-spacing:1px;}
+.resultVal{font-size:22px; font-weight:700; color:var(--text); margin-top:2px;}
+.resultBtns{display:flex; gap:12px; margin-top:30px;}
+.resultBtns button{padding:12px 26px; border-radius:12px; border:1px solid var(--line); font-size:15px;}
+.btnPrimary{background:var(--accent); color:var(--accent-ink); border:none; font-weight:700;}
+.btnGhost{background:var(--panel); color:var(--text);}
+
+/* TASKS */
+.taskCard{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px;
+  margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;}
+.taskName{font-size:14px;} .taskSub{font-size:12px; color:var(--sub); margin-top:4px;}
+.claimBtn{background:var(--accent); color:var(--accent-ink); border:none; border-radius:10px; padding:9px 14px; font-size:13px; font-weight:700;}
+.claimBtn:disabled{background:var(--panel2); color:var(--sub);}
+.sectionTitle{font-size:13px; color:var(--sub); letter-spacing:2px; margin:18px 0 10px;}
+.seasonInfo{font-size:12px; color:var(--sub); margin-bottom:12px;}
+.rewardTrack{display:flex; flex-direction:column-reverse; gap:10px; margin-top:8px;}
+.rewardRow{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px;
+  display:flex; align-items:center; gap:12px;}
+.rewardRow.locked{opacity:.45;}
+.rewardEmoji{font-size:28px; width:40px; text-align:center;}
+.rewardImg{height:40px; object-fit:contain; border-radius:8px; flex-shrink:0;}
+.rewardText{flex:1;} .rewardThresh{font-size:11px; color:var(--sub);}
+
+.pointsProgress{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px;}
+.pointsProgressTop{display:flex; align-items:baseline; justify-content:space-between;}
+.pointsProgressLabel{font-size:12px; color:var(--sub); letter-spacing:1px;}
+.pointsProgressVal{font-size:20px; font-weight:700; color:var(--text);}
+.pointsProgressBarOuter{width:100%; height:10px; background:var(--panel2); border:1px solid var(--line);
+  border-radius:8px; overflow:hidden; margin-top:10px;}
+.pointsProgressBarInner{height:100%; width:0%; background:linear-gradient(90deg,var(--accent),#ffb84d);
+  border-radius:8px; transition:width .35s ease;}
+.pointsProgressNext{font-size:12px; color:var(--sub); margin-top:8px;}
+
+/* DECOR PANEL */
+.decoTabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:8px;}
+.decoTab{background:var(--panel); border:1px solid var(--line); color:var(--sub); padding:7px 14px;
+  border-radius:20px; font-size:13px; white-space:nowrap;}
+.decoTab.active{background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+.decoGrid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px;}
+.decoItem{background:var(--panel); border:1px solid var(--line); border-radius:12px; aspect-ratio:1;
+  display:flex; align-items:center; justify-content:center; font-size:26px; overflow:hidden;}
+.decoItem.locked{opacity:.3;}
+.decoItemImg{width:78%; height:78%; object-fit:contain;}
+
+/* SETTINGS */
+.settingRow{display:flex; justify-content:space-between; align-items:center; padding:14px 0;
+  border-bottom:1px solid var(--line);}
+.settingRow label{font-size:14px;}
+.settingRow input[type=range]{width:150px;}
+.toggle{width:46px; height:26px; border-radius:14px; background:var(--panel2); position:relative; border:1px solid var(--line);}
+.toggle.on{background:var(--accent);}
+.toggle::after{content:''; position:absolute; width:20px; height:20px; border-radius:50%; background:#fff;
+  top:2px; left:2px; transition:left .15s ease;}
+.toggle.on::after{left:22px;}
+.settingBtn{background:var(--panel); border:1px solid var(--line); color:var(--text); border-radius:10px;
+  padding:10px 16px; font-size:13px; margin-top:8px; width:100%;}
+.settingBtn:disabled{opacity:.5;}
+.updateStatusText{font-size:12px; color:var(--sub); line-height:1.5; margin-top:6px; min-height:1.5em;}
+.dangerBtn{color:var(--accent2); border-color:var(--accent2);}
+#importFile{display:none;}
+.confirmBox{position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:center;
+  justify-content:center; z-index:200;}
+.confirmBox.show{display:flex;}
+.confirmCard{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px; width:80%; max-width:320px; text-align:center;}
+.confirmCard p{font-size:14px; color:var(--sub); margin:10px 0 18px;}
+.confirmBtns{display:flex; gap:10px;}
+.confirmBtns button{flex:1; padding:11px; border-radius:10px; border:1px solid var(--line);}
+.toast{position:fixed; bottom:calc(20px + var(--safe-b)); left:50%; transform:translateX(-50%);
+  background:var(--panel); border:1px solid var(--line); padding:10px 18px; border-radius:20px;
+  font-size:13px; z-index:300; opacity:0; transition:opacity .25s ease;}
+.toast.show{opacity:1;}
+
+/* MUSIC PANEL (mp3-player style card) */
+.musicPanelOverlay{position:fixed; inset:0; background:rgba(20,14,6,.55); display:none;
+  align-items:center; justify-content:center; z-index:260; padding:20px;}
+.musicPanelOverlay.show{display:flex;}
+.musicPanelCard{background:var(--panel); border-radius:20px; width:100%; max-width:340px;
+  max-height:74vh; display:flex; flex-direction:column; overflow:hidden;
+  box-shadow:0 14px 34px rgba(0,0,0,.3);}
+.musicPanelHeader{display:flex; align-items:center; justify-content:space-between;
+  padding:16px 16px 12px; border-bottom:1px solid var(--line); flex-shrink:0;}
+.musicPanelHeader h3{margin:0; font-size:15px; font-weight:700; color:var(--text);}
+.musicPanelClose{background:var(--panel2); border:none; color:var(--sub); width:28px; height:28px;
+  border-radius:50%; font-size:13px; flex-shrink:0; touch-action:manipulation;}
+.musicPanelList{overflow-y:auto; padding:10px 10px 4px; display:flex; flex-direction:column; gap:6px;}
+.musicRow{display:flex; align-items:center; gap:10px; padding:9px 8px; border-radius:14px;
+  background:transparent; touch-action:manipulation;}
+.musicRow.active{background:var(--panel2);}
+.musicRowIcon{position:relative; width:34px; height:34px; border-radius:50%; flex-shrink:0;
+  background:
+    radial-gradient(circle at 50% 50%, var(--accent) 0 5px, #161616 6px, #161616 100%),
+    repeating-radial-gradient(circle at 50% 50%, #333 0px, #333 1px, #101010 1px, #101010 3px);
+  box-shadow:0 2px 6px rgba(0,0,0,.25);}
+.musicRowIcon::before{content:''; position:absolute; inset:0; border-radius:50%;
+  background:conic-gradient(from -40deg,
+    rgba(255,255,255,0) 0deg, rgba(255,255,255,.6) 18deg, rgba(255,255,255,0) 42deg,
+    rgba(255,255,255,0) 190deg, rgba(255,255,255,.25) 208deg, rgba(255,255,255,0) 226deg,
+    rgba(255,255,255,0) 360deg);
+  mix-blend-mode:screen; pointer-events:none;}
+.musicRowIcon.spinning{animation:spin 4s linear infinite;}
+.musicRowInfo{flex:1; min-width:0;}
+.musicRowName{font-size:13px; font-weight:600; color:var(--text); white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis;}
+.musicRowStatus{font-size:11px; color:var(--sub); margin-top:2px;}
+.musicRowBtn{background:var(--panel); border:1px solid var(--line); color:var(--text);
+  width:32px; height:32px; border-radius:50%; font-size:13px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; touch-action:manipulation;}
+.musicRowBtn.isPlaying{background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+.musicPanelEmpty{padding:34px 20px; text-align:center; color:var(--sub); font-size:13px; line-height:1.6;}
+.musicPanelFooter{padding:10px 16px calc(12px + var(--safe-b)); border-top:1px solid var(--line); flex-shrink:0;}
+.musicPanelStopBtn{width:100%; background:var(--panel2); color:var(--sub); border:none;
+  border-radius:12px; padding:10px; font-size:13px; font-weight:600; touch-action:manipulation;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME -->
+  <div class="screen active" id="homeScreen">
+    <button class="homeEditBtn" id="homeEditBtn">✏️ 布置模式：關閉</button>
+    <div id="homeCanvasFrame">
+      <div id="homeCanvas">
+        <div id="gramophone" title="音樂播放器"></div>
+      </div>
+    </div>
+    <div id="decoToolbar">
+      <div class="scaleCell"><span>大小</span><input type="range" id="scaleSlider" min="0.4" max="2.2" step="0.05" value="1"></div>
+      <button data-act="rotR">↻ 旋轉</button>
+      <button data-act="flip">↔️ 翻轉</button>
+      <button data-act="del">🗑️ 刪除</button>
+    </div>
+    <div id="navBar">
+      <button data-target="stageScreen"><span class="navIcon">⚔️</span>關卡</button>
+      <button data-target="taskScreen"><span class="navIcon">📋</span>任務</button>
+      <button data-target="decoScreen"><span class="navIcon">🎨</span>布置</button>
+      <button data-target="settingScreen"><span class="navIcon">⚙️</span>設定</button>
+    </div>
+  </div>
+
+  <!-- STAGE -->
+  <div class="screen" id="stageScreen">
+    <div class="topbar"><button class="backBtn" data-back>返回</button><h2>關卡</h2></div>
+    <div class="panelBody">
+      <div class="bossPortraitWrap">
+        <img id="bossImg" src="https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss.png" alt="boss">
+        <div class="hpBarOuter"><div class="hpBarInner" id="stageHpBar"></div></div>
+        <div class="staminaRow" id="staminaRow"></div>
+        <div class="staminaLabel" id="staminaLabel">5 / 5</div>
+        <button id="startBattleBtn">開始</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BATTLE -->
+  <div class="screen" id="battleScreen">
+    <div id="battlePauseOverlay"></div>
+    <div id="battleMain">
+      <div id="leftPanel">
+        <div id="boardWrap"><div id="board"></div></div>
+        <div class="controls">
+          <button class="ctrlBtn" id="btnLeft">◀</button>
+          <button class="ctrlBtn" id="btnDrop">▼</button>
+          <button class="ctrlBtn" id="btnRight">▶</button>
+          <button class="ctrlBtn" id="btnRotate">↻</button>
+        </div>
+      </div>
+      <div id="rightPanel">
+        <button id="leaveBattleBtn" title="離開">✕</button>
+        <div id="bossCorner">
+          <img id="bossImgBattle" src="https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss.png" alt="boss">
+          <div class="hpBarOuter battle"><div class="hpBarInner" id="battleHpBar"></div></div>
+        </div>
+        <div class="nextCol">
+          <div class="nextLabel">NEXT</div>
+          <div class="nextBox" id="nextBox1"></div>
+          <div class="nextBox" id="nextBox2"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="resultOverlay">
+      <div class="resultTitle" id="resultTitle">BOSS DEFEATED</div>
+      <div class="resultStat">CLEAR TIME</div>
+      <div class="resultVal" id="resultTime">00:00.0</div>
+      <div class="resultStat">MAX COMBO</div>
+      <div class="resultVal" id="resultCombo">×0</div>
+      <div class="resultBtns">
+        <button class="btnPrimary" id="retryBtn">再戰</button>
+        <button class="btnGhost" id="resultBackBtn">返回</button>
+      </div>
+    </div>
+    <div id="gameoverOverlay">
+      <div class="resultTitle go">GAME OVER</div>
+      <div class="resultBtns">
+        <button class="btnPrimary" id="retryBtn2">再戰</button>
+        <button class="btnGhost" id="resultBackBtn2">返回</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TASK -->
+  <div class="screen" id="taskScreen">
+    <div class="topbar"><button class="backBtn" data-back>返回</button><h2>任務</h2></div>
+    <div class="panelBody">
+      <div class="sectionTitle">每日任務</div>
+      <div id="dailyTasks"></div>
+      <div class="sectionTitle">挑戰任務</div>
+      <div class="seasonInfo" id="seasonInfo"></div>
+      <div id="challengeTasks"></div>
+      <div class="sectionTitle">積分獎勵</div>
+      <div class="pointsProgress" id="pointsProgress">
+        <div class="pointsProgressTop">
+          <span class="pointsProgressLabel">目前積分</span>
+          <span class="pointsProgressVal" id="pointsCurrentVal">0</span>
+        </div>
+        <div class="pointsProgressBarOuter"><div class="pointsProgressBarInner" id="pointsProgressBarInner"></div></div>
+        <div class="pointsProgressNext" id="pointsProgressNext"></div>
+      </div>
+      <div class="rewardTrack" id="rewardTrack"></div>
+    </div>
+  </div>
+
+  <!-- DECO -->
+  <div class="screen" id="decoScreen">
+    <div class="topbar"><button class="backBtn" data-back>返回</button><h2>布置</h2></div>
+    <div class="panelBody">
+      <div class="decoTabs" id="decoTabs"></div>
+      <div class="decoGrid" id="decoGrid"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="screen" id="settingScreen">
+    <div class="topbar"><button class="backBtn" data-back>返回</button><h2>設定</h2></div>
+    <div class="panelBody">
+      <div class="settingRow"><label>音樂音量</label><input type="range" id="musicVolSlider" min="0" max="1" step="0.05"></div>
+      <div class="settingRow"><label>音效音量</label><input type="range" id="sfxVolSlider" min="0" max="1" step="0.05"></div>
+      <div class="settingRow"><label>音樂開關</label><div class="toggle" id="musicToggle"></div></div>
+      <div class="settingRow"><label>App 版本</label><div class="updateStatusText" id="appVersionLabel" style="margin-top:0;">讀取中…</div></div>
+      <button class="settingBtn" id="updateBtn">更新到最新版本</button>
+      <div class="updateStatusText" id="updateStatusText" style="text-align:center;"></div>
+      <button class="settingBtn" id="exportBtn">匯出存檔</button>
+      <button class="settingBtn" id="importBtn">匯入存檔</button>
+      <input type="file" id="importFile" accept="application/json">
+      <button class="settingBtn dangerBtn" id="clearBtn">清除所有資料</button>
+    </div>
+  </div>
+
+  <div class="musicPanelOverlay" id="musicPanelOverlay">
+    <div class="musicPanelCard">
+      <div class="musicPanelHeader">
+        <h3>已解鎖音樂</h3>
+        <button class="musicPanelClose" id="musicPanelClose">✕</button>
+      </div>
+      <div class="musicPanelList" id="musicPanelList"></div>
+      <div class="musicPanelEmpty" id="musicPanelEmpty" style="display:none;">尚未解鎖任何音樂，完成任務解鎖吧！</div>
+      <div class="musicPanelFooter">
+        <button class="musicPanelStopBtn" id="musicPanelStop">⏹ 停止播放</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="confirmBox" id="confirmBox">
+    <div class="confirmCard">
+      <div style="font-weight:700;">確定要清除所有資料嗎？</div>
+      <p>此動作無法復原，所有進度將會消失。</p>
+      <div class="confirmBtns">
+        <button class="btnGhost" id="confirmCancel">取消</button>
+        <button class="btnPrimary" style="background:var(--accent2)" id="confirmOk">清除</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================
+   CONFIG
+========================================================= */
+const CONFIG = {
+  saveVersion: 1,
+  boss: { maxHp: 1200, attackIntervalMs: 30000 },
+  damage: { 1:35, 2:80, 3:135, 4:200 },
+  comboStepPct: 0.05, comboMaxMult: 1.5,
+  minLinesBeforeKill: 20,
+  stamina: { max:5, regenMs: 60*60*1000 },
+  garbage: { rowsPerAttack: 1 },
+  gravityMs: 800, softDropMs: 55, lockDelayMs: 400, lockMaxResets: 8,
+  dasDelayMs: 200, dasRepeatMs: 90, dropHoldThresholdMs: 160,
+  seasonLengthDays: 14,
+  seasonAnchor: { year:2026, month:8, day:14, hour:8 }, // 第一輪開始：2026/9/14（一）早上8點
+  dailyTaskPoints: 10, challengeTaskPoints: 10, dailyResetHour: 8,
+  challengeGoals: [10,20,30],
+  bossImgUrl: "https://raw.githubusercontent.com/paulie0102-Bear/catch/refs/heads/main/character/boss.png"
+};
+
+const BOSS_DATA = {
+  boss001: { name:"Boss", img: CONFIG.bossImgUrl, maxHp: CONFIG.boss.maxHp, attackIntervalMs: CONFIG.boss.attackIntervalMs }
+};
+
+/* =========================================================
+   GAME DATA (static content definitions)
+========================================================= */
+/* -----------------------------------------------------------
+   音樂清單：要新增/更換音樂，只要在這裡新增一筆
+   { 顯示名稱, 音樂檔網址 }，key（如 lofi）就是這首歌的 trackId，
+   會被獎勵資料的 trackId 欄位引用來解鎖。
+   url 請填 GitHub 上傳後的「raw」網址，例如：
+   https://raw.githubusercontent.com/<帳號>/<repo>/refs/heads/main/music/xxx.mp3
+----------------------------------------------------------- */
+const MUSIC_TRACKS = {
+  track_r1: { name:"離開的一路上", url:"https://paulie0102-bear.github.io/garden/music/1.mp3" },
+  track_r2: { name:"如果可以",     url:"https://paulie0102-bear.github.io/garden/music/2.mp3" },
+  track_r3: { name:"總有一工",     url:"https://paulie0102-bear.github.io/garden/music/10.mp3" },
+  track_r4: { name:"絕地花園",     url:"https://paulie0102-bear.github.io/garden/music/14.mp3" },
+  track_r5: { name:"披星戴月的想你", url:"https://paulie0102-bear.github.io/garden/music/15.mp3" }
+  // 新增音樂範例：
+  // newTrack: { name:"新歌名稱", url:"https://raw.githubusercontent.com/你的帳號/你的repo/refs/heads/main/music/newTrack.mp3" }
+};
+
+/* -----------------------------------------------------------
+   賽季積分獎勵：SEASON_REWARD_TEMPLATES 是一個「每季一份清單」的陣列，
+   每一份清單裡的每個物件就是一個獎勵，欄位：
+     id       唯一識別碼（不可重複，claim/解鎖都靠它）
+     name     顯示名稱
+     category 分類，需對應下面 CATEGORIES 其中一個 id（或自行新增分類）
+     emoji    顯示用的圖示（純文字/emoji時使用；若有填 img 則優先顯示 img）
+     img      （選填）圖片網址，填了就會改用圖片顯示，取代 emoji
+               background 分類的 img 會自動放大填滿整個布置畫布
+     threshold 達到多少「賽季積分」可解鎖此獎勵
+     trackId  （只有 category:"music" 需要）對應 MUSIC_TRACKS 的 key
+
+   要新增一筆獎勵：直接在對應賽季的陣列裡多加一個物件即可，
+   threshold 可以填任意數字，不需要跟其他獎勵對齊，
+   清單會依 threshold 自動排序、自動產生進度軌道。
+   要新增一整個賽季：整個陣列再多加一份清單即可（賽季會自動輪替）。
+----------------------------------------------------------- */
+const SEASON_REWARD_TEMPLATES = [
+  [ // 第1輪 9/14
+    {id:"bg_r1", name:"雪地全家福", category:"background",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/garden/refs/heads/main/1.png", threshold:50},
+    {id:"plant_r1", name:"楓葉", category:"plant",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f341.png", threshold:100},
+    {id:"food_r1", name:"草莓冰淇淋", category:"food",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f366.png", threshold:150},
+    {id:"char_r1", name:"Bobo", category:"character",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/farm/refs/heads/main/member/BOBO.gif", threshold:200},
+    {id:"music_r1", name:"離開的一路上", category:"music", trackId:"track_r1", threshold:250}
+  ],
+  [ // 第2輪
+    {id:"bg_r2", name:"滑雪的BoBo", category:"background",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/garden/refs/heads/main/2.png", threshold:50},
+    {id:"plant_r2", name:"馬力歐菇", category:"plant",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f344.png", threshold:100},
+    {id:"food_r2", name:"沁涼雪花冰", category:"food",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f367.png", threshold:150},
+    {id:"char_r2", name:"Quokka", category:"character",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/farm/refs/heads/main/member/QUOKKA.gif", threshold:200},
+    {id:"music_r2", name:"如果可以", category:"music", trackId:"track_r2", threshold:250}
+  ],
+  [ // 第3輪
+    {id:"bg_r3", name:"雪地滑雪", category:"background",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/garden/refs/heads/main/3.png", threshold:50},
+    {id:"plant_r3", name:"葡萄", category:"plant",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f347.png", threshold:100},
+    {id:"food_r3", name:"三色抹茶丸子", category:"food",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f361.png", threshold:150},
+    {id:"char_r3", name:"Bric", category:"character",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/farm/refs/heads/main/member/BRIC.gif", threshold:200},
+    {id:"music_r3", name:"總有一工", category:"music", trackId:"track_r3", threshold:250}
+  ],
+  [ // 第4輪
+    {id:"bg_r4", name:"10分!", category:"background",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/garden/refs/heads/main/4.png", threshold:50},
+    {id:"plant_r4", name:"哈密瓜", category:"plant",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f348.png", threshold:100},
+    {id:"food_r4", name:"提拉米蘇蛋糕", category:"food",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f370.png", threshold:150},
+    {id:"char_r4", name:"Fatty", category:"character",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/farm/refs/heads/main/member/FATTY.gif", threshold:200},
+    {id:"music_r4", name:"絕地花園", category:"music", trackId:"track_r4", threshold:250}
+  ],
+  [ // 第5輪
+    {id:"bg_r5", name:"臥冰求鯉", category:"background",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/garden/refs/heads/main/5.png", threshold:50},
+    {id:"plant_r5", name:"牛頓的天敵", category:"plant",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f34e.png", threshold:100},
+    {id:"food_r5", name:"法式吐司", category:"food",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f35e.png", threshold:150},
+    {id:"char_r5", name:"Hatty", category:"character",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/farm/refs/heads/main/member/HATTY.gif", threshold:200},
+    {id:"music_r5", name:"披星戴月的想你", category:"music", trackId:"track_r5", threshold:250}
+  ],
+  [ // 第6輪
+    {id:"bg_r6", name:"笑一個吧", category:"background",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/garden/refs/heads/main/6.png", threshold:50},
+    {id:"plant_r6", name:"旺來", category:"plant",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f34d.png", threshold:100},
+    {id:"food_r6", name:"金黃薯條", category:"food",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f35f.png", threshold:150},
+    {id:"char_r6", name:"Marsh", category:"character",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/farm/refs/heads/main/member/MARSH.gif", threshold:200}
+  ],
+  [ // 第7輪
+    {id:"bg_r7", name:"願者上鉤", category:"background",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/garden/refs/heads/main/7.png", threshold:50},
+    {id:"plant_r7", name:"天天有活力", category:"plant",
+      img:"https://paulie0102-Bear.github.io/pharm/bouquet_energy.png", threshold:100},
+    {id:"food_r7", name:"杯子蛋糕", category:"food",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f9c1.png", threshold:150},
+    {id:"char_r7", name:"Mr.Burnt", category:"character",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/farm/refs/heads/main/member/MR.BURNT.gif", threshold:200}
+  ],
+  [ // 第8輪
+    {id:"bg_r8", name:"雪人", category:"background",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/garden/refs/heads/main/8.png", threshold:50},
+    {id:"plant_r8", name:"倏然夢", category:"plant",
+      img:"https://paulie0102-Bear.github.io/pharm/bouquet_dream.png", threshold:100},
+    {id:"food_r8", name:"生日蛋糕", category:"food",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f382.png", threshold:150},
+    {id:"char_r8", name:"MamaQuokka", category:"character",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/farm/refs/heads/main/member/MAMA%20QUOKKA.gif", threshold:200}
+  ],
+  [ // 第9輪
+    {id:"bg_r9", name:"雪球", category:"background",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/garden/refs/heads/main/9.png", threshold:50},
+    {id:"plant_r9", name:"成功之路", category:"plant",
+      img:"https://paulie0102-Bear.github.io/pharm/bouquet_success.png", threshold:100},
+    {id:"food_r9", name:"餅乾", category:"food",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f36a.png", threshold:150},
+    {id:"char_r9", name:"PapaQuokka", category:"character",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/farm/refs/heads/main/member/PAPA%20QUOKKA.gif", threshold:200}
+  ],
+  [ // 第10輪
+    {id:"bg_r10", name:"眾樂樂", category:"background",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/garden/refs/heads/main/10.png", threshold:50},
+    {id:"plant_r10", name:"畢業快樂", category:"plant",
+      img:"https://paulie0102-Bear.github.io/pharm/bouquet_grad.png", threshold:100},
+    {id:"food_r10", name:"甜甜圈", category:"food",
+      img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f369.png", threshold:150},
+    {id:"char_r10", name:"GrandpaQuokka", category:"character",
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/farm/refs/heads/main/member/GRANDPA%20QUOKKA.gif", threshold:200}
+  ]
+  // 新增輪次範例：
+  // [
+  //   {id:"bg_r11", name:"新背景", category:"background", img:"圖片網址", threshold:50},
+  //   ...
+  // ]
+];
+function getSeasonRewards(seasonIndex){
+  const tpl = SEASON_REWARD_TEMPLATES[((seasonIndex % SEASON_REWARD_TEMPLATES.length)+SEASON_REWARD_TEMPLATES.length)%SEASON_REWARD_TEMPLATES.length];
+  return tpl.slice().sort((a,b)=>a.threshold-b.threshold);
+}
+const CATEGORIES = [
+  {id:"background", name:"背景"}, {id:"plant", name:"植物"},
+  {id:"food", name:"食物"}, {id:"character", name:"人物"}, {id:"other", name:"其他"}
+];
+
+const SHAPES = {
+  I:[["....","XXXX","....","...."],["..X.","..X.","..X.","..X."],["....","....","XXXX","...."],[".X..",".X..",".X..",".X.."]],
+  O:[["....",".XX.",".XX.","...."],["....",".XX.",".XX.","...."],["....",".XX.",".XX.","...."],["....",".XX.",".XX.","...."]],
+  T:[["....",".X..","XXX.","...."],["....",".X..",".XX.",".X.."],["....","....","XXX.",".X.."],["....",".X..","XX..",".X.."]],
+  S:[["....",".XX.","XX..","...."],["....",".X..",".XX.","..X."],["....","....",".XX.","XX.."],["....","X...","XX..",".X.."]],
+  Z:[["....","XX..",".XX.","...."],["....","..X.",".XX.",".X.."],["....","....","XX..",".XX."],["....",".X..","XX..","X..."]],
+  J:[["....","X...","XXX.","...."],["....",".XX.",".X..",".X.."],["....","....","XXX.","..X."],["....",".X..",".X..","XX.."]],
+  L:[["....","..X.","XXX.","...."],["....",".X..",".X..",".XX."],["....","....","XXX.","X..."],["....","XX..",".X..",".X.."]]
+};
+const PIECE_TYPES = Object.keys(SHAPES);
+
+/* =========================================================
+   SAVE SYSTEM (IndexedDB)
+========================================================= */
+const DB_NAME="boss_tetris_db", DB_STORE="save", DB_KEY="state";
+let dbInstance=null;
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = ()=>{ req.result.createObjectStore(DB_STORE); };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+}
+async function dbGet(){
+  try{
+    if(!dbInstance) dbInstance = await openDB();
+    return await new Promise((resolve,reject)=>{
+      const tx = dbInstance.transaction(DB_STORE,"readonly");
+      const req = tx.objectStore(DB_STORE).get(DB_KEY);
+      req.onsuccess=()=>resolve(req.result||null);
+      req.onerror=()=>reject(req.error);
+    });
+  }catch(e){ console.warn("dbGet failed",e); return null; }
+}
+async function dbSet(data){
+  try{
+    if(!dbInstance) dbInstance = await openDB();
+    return await new Promise((resolve,reject)=>{
+      const tx = dbInstance.transaction(DB_STORE,"readwrite");
+      tx.objectStore(DB_STORE).put(data, DB_KEY);
+      tx.oncomplete=()=>resolve(true);
+      tx.onerror=()=>reject(tx.error);
+    });
+  }catch(e){ console.warn("dbSet failed",e); return false; }
+}
+
+function defaultState(){
+  return {
+    saveVersion: CONFIG.saveVersion,
+    stamina: { current: CONFIG.stamina.max, lastTs: Date.now() },
+    stats: { totalWins:0, bestTimeMs:null, bestCombo:0 },
+    music: { unlocked:[], current:null, musicOn:true, musicVol:0.6, sfxVol:0.6 },
+    daily: { date:null, played:false, cleared:false, claimPlay:false, claimClear:false },
+    season: { index:null, points:0, wins:0, claimed:[false,false,false], rewardsClaimed:[] },
+    unlockedItems: [],
+    home: { background:null, placed:[] } // placed: {uid,itemId,x,y,scale,flipped,z}
+  };
+}
+let STATE = null;
+let saveTimer = null;
+// 【修正 IndexedDB 存檔競態】Serial Save Queue：
+// 所有實際要寫進 IndexedDB 的動作，一律串接在同一條 saveQueueTail 上依序執行，
+// 不會同時競速——就算某一次 dbSet() 比較晚 resolve，實際寫入 IndexedDB 的順序仍然
+// 完全依照排隊的先後順序（A→B→C→D 送進去，即使非同步完成順序被打亂，最終寫入
+// IndexedDB 的操作順序也一定是 A→B→C→D，最後留在資料庫裡的一定是 D）。
+// dbSet() 本身已經用 try/catch 保證不會 reject（失敗回傳 false），這裡再用 .catch() 補一層保險，
+// 確保單一次寫入失敗（例如中途發生 tx.onerror）絕對不會讓 chain 中斷、拖累後面排隊中的寫入。
+let saveQueueTail = Promise.resolve(true);
+function enqueueSave(snapshot){
+  const task = saveQueueTail.then(()=> dbSet(snapshot)).catch(()=> false);
+  saveQueueTail = task;
+  return task;
+}
+function scheduleSave(){
+  if(saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    saveTimer = null;
+    // 在 timer 真正觸發的當下立刻做 deep snapshot，而不是等排到 queue 裡才讀 STATE，
+    // 避免「開始非同步寫入後 STATE 又被修改」導致原本準備保存的資料被後續變動污染。
+    enqueueSave(JSON.parse(JSON.stringify(STATE)));
+  }, 150);
+}
+// 可靠版寫入：確保「目前為止所有已經排入 queue 的存檔」都真的完整寫入 IndexedDB 才 resolve。
+// saveQueueTail 是一條依序串接的 Promise chain，await 它就等同於等待整條 queue 清空，
+// 而不是只等最後一次呼叫留下的單一 Promise reference。
+async function flushSave(){
+  if(saveTimer){
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    enqueueSave(JSON.parse(JSON.stringify(STATE)));
+  }
+  return await saveQueueTail;
+}
+async function loadState(){
+  const raw = await dbGet();
+  if(raw && raw.saveVersion){
+    STATE = migrate(raw);
+  } else {
+    STATE = defaultState();
+  }
+  reconcileStamina();
+  reconcileDaily();
+  reconcileSeason();
+  scheduleSave();
+}
+function migrate(raw){
+  // future migrations go here based on raw.saveVersion
+  const base = defaultState();
+  const merged = Object.assign(base, raw, {
+    stamina: Object.assign(base.stamina, raw.stamina),
+    stats: Object.assign(base.stats, raw.stats),
+    music: Object.assign(base.music, raw.music),
+    daily: Object.assign(base.daily, raw.daily),
+    season: Object.assign(base.season, raw.season),
+    home: Object.assign(base.home, raw.home)
+  });
+  // 保險去重：賽季模板每輪循環使用相同的物件/背景/音樂id，
+  // 正常流程已用 includes 判斷避免重複塞入，這裡對讀出來的舊存檔再做一次去重，
+  // 確保就算是更舊版本產生的存檔，也不會因重複資料造成顯示或領取異常
+  merged.unlockedItems = Array.from(new Set(merged.unlockedItems||[]));
+  merged.music.unlocked = Array.from(new Set(merged.music.unlocked||[]));
+  merged.season.rewardsClaimed = Array.from(new Set(merged.season.rewardsClaimed||[]));
+  return merged;
+}
+
+/* =========================================================
+   TIME HELPERS
+========================================================= */
+function localDateKey(d){
+  // 每日任務以「早上8點」為一天的分界，而非午夜0點：
+  // 把時間往回推 dailyResetHour 小時再取日期，換算後的日期一改變，
+  // 就代表已經跨過當天的重置時刻（早上8:00）
+  const shifted = new Date(d.getTime() - CONFIG.dailyResetHour*3600*1000);
+  return shifted.getFullYear()+"-"+(shifted.getMonth()+1)+"-"+shifted.getDate();
+}
+function seasonAnchorTs(){
+  const a=CONFIG.seasonAnchor;
+  return new Date(a.year,a.month,a.day,a.hour,0,0,0).getTime();
+}
+function currentSeasonIndex(now){
+  const periodMs = CONFIG.seasonLengthDays*24*3600*1000;
+  return Math.floor((now - seasonAnchorTs())/periodMs);
+}
+function seasonStartTs(idx){
+  const periodMs = CONFIG.seasonLengthDays*24*3600*1000;
+  return seasonAnchorTs() + idx*periodMs;
+}
+
+function reconcileStamina(){
+  const now=Date.now();
+  const cfg=CONFIG.stamina;
+  if(STATE.stamina.current < cfg.max){
+    const elapsed = now - STATE.stamina.lastTs;
+    const gained = Math.floor(elapsed/cfg.regenMs);
+    if(gained>0){
+      STATE.stamina.current = Math.min(cfg.max, STATE.stamina.current+gained);
+      STATE.stamina.lastTs += gained*cfg.regenMs;
+    }
+  } else {
+    STATE.stamina.lastTs = now;
+  }
+}
+function reconcileDaily(){
+  const key = localDateKey(new Date());
+  if(STATE.daily.date !== key){
+    STATE.daily = { date:key, played:false, cleared:false, claimPlay:false, claimClear:false };
+  }
+}
+function reconcileSeason(){
+  const idx = currentSeasonIndex(Date.now());
+  if(STATE.season.index !== idx){
+    STATE.season = { index: idx, points:0, wins:0, claimed:[false,false,false], rewardsClaimed:[] };
+  }
+}
+
+/* =========================================================
+   AUDIO SYSTEM (persistent across all UI renders)
+========================================================= */
+const AudioSys = (function(){
+  let ctx=null, master=null, sfxGain=null;
+  let currentTrackId=null;
+  // 音樂使用單一個持久化的 <audio> 元素播放（來源是 MUSIC_TRACKS 裡的 url）。
+  // 這個元素在整個網頁生命週期只建立一次，之後切換畫面/開關任何面板都只是
+  // CSS 顯示/隱藏，不會重新建立或重新 play()，所以音樂不會從頭重播。
+  let musicEl=null;
+  function ensureCtx(){
+    if(ctx) return;
+    ctx = new (window.AudioContext||window.webkitAudioContext)();
+    master = ctx.createGain(); master.connect(ctx.destination);
+    sfxGain = ctx.createGain(); sfxGain.connect(master);
+    applyVolumes();
+  }
+  function ensureMusicEl(){
+    if(musicEl) return musicEl;
+    musicEl = new Audio();
+    musicEl.loop = true;
+    musicEl.preload = "auto";
+    musicEl.addEventListener("error", ()=>{ toast("音樂載入失敗，請確認網址是否正確"); });
+    applyVolumes();
+    return musicEl;
+  }
+  function applyVolumes(){
+    if(ctx && sfxGain) sfxGain.gain.value = STATE.music.sfxVol;
+    if(musicEl) musicEl.volume = STATE.music.musicOn ? STATE.music.musicVol : 0;
+  }
+  function playTrack(id){
+    const track = MUSIC_TRACKS[id];
+    if(!track || !track.url){ toast("此音樂尚未設定網址"); return; }
+    ensureMusicEl();
+    if(currentTrackId===id){
+      // 同一首歌：若因瀏覽器自動播放限制而暫停了，續播即可，不重置進度
+      if(musicEl.paused) musicEl.play().catch(()=>{});
+      return;
+    }
+    currentTrackId = id;
+    musicEl.src = track.url;
+    musicEl.currentTime = 0;
+    applyVolumes();
+    musicEl.play().catch(()=>{ /* 可能需要使用者手勢才能播放，交由 unlockOnGesture 補播 */ });
+  }
+  function stop(){
+    if(musicEl) musicEl.pause();
+    currentTrackId=null;
+  }
+  function pause(){
+    if(musicEl) musicEl.pause();
+  }
+  function setMusicOn(on){ STATE.music.musicOn = on; applyVolumes(); }
+  function setMusicVol(v){ STATE.music.musicVol = v; applyVolumes(); }
+  function setSfxVol(v){ STATE.music.sfxVol = v; applyVolumes(); }
+  function sfx(type){
+    ensureCtx(); if(ctx.state==="suspended") ctx.resume();
+    const o=ctx.createOscillator(); const g=ctx.createGain();
+    const t=ctx.currentTime;
+    let f0=440,f1=440,dur=0.12;
+    if(type==="clear"){f0=520;f1=880;dur=0.18;}
+    if(type==="bomb"){f0=180;f1=60;dur=0.25;}
+    if(type==="lock"){f0=220;f1=180;dur=0.08;}
+    if(type==="victory"){f0=440;f1=880;dur=0.6;}
+    if(type==="gameover"){f0=300;f1=80;dur=0.6;}
+    o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(Math.max(f1,20),t+dur);
+    g.gain.setValueAtTime(0.25,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t+dur+0.02);
+  }
+  function unlockOnGesture(){
+    ensureCtx();
+    if(ctx.state==="suspended") ctx.resume();
+    if(STATE.music.current && STATE.music.unlocked.includes(STATE.music.current)){
+      if(currentTrackId===null){
+        playTrack(STATE.music.current);
+      } else if(musicEl && musicEl.paused){
+        musicEl.play().catch(()=>{});
+      }
+    }
+  }
+  return { playTrack, stop, pause, setMusicOn, setMusicVol, setSfxVol, sfx, applyVolumes, unlockOnGesture,
+    get isPlaying(){ return !!(musicEl && !musicEl.paused && !musicEl.ended); } };
+})();
+
+
+/* =========================================================
+   UI HELPERS / NAV
+========================================================= */
+function $(sel){ return document.querySelector(sel); }
+function $all(sel){ return Array.from(document.querySelectorAll(sel)); }
+function showScreen(id){
+  $all(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  if(id==="stageScreen") renderStage();
+  if(id==="taskScreen") renderTasks();
+  if(id==="decoScreen") renderDecoPanel();
+  if(id==="settingScreen") renderSettings();
+}
+function toast(msg){
+  const t=$("#toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toast._tm); toast._tm=setTimeout(()=>t.classList.remove("show"),1600);
+}
+function bindTapButton(el, handler){
+  let pid=null;
+  el.addEventListener("pointerdown",(e)=>{
+    if(pid!==null) return;
+    pid=e.pointerId; el.classList.add("pressed");
+    try{ el.setPointerCapture(pid); }catch(err){}
+  });
+  function end(e, fire){
+    if(pid===null || (e && e.pointerId!==pid)) return;
+    pid=null; el.classList.remove("pressed");
+    if(fire) handler();
+  }
+  el.addEventListener("pointerup",(e)=>end(e,true));
+  el.addEventListener("pointercancel",(e)=>end(e,false));
+}
+$all("#navBar button").forEach(b=>bindTapButton(b,()=>{
+  AudioSys.unlockOnGesture();
+  showScreen(b.dataset.target);
+}));
+$all("[data-back]").forEach(b=>bindTapButton(b,()=>showScreen("homeScreen")));
+
+/* =========================================================
+   HOME / DECORATION SYSTEM
+========================================================= */
+let editMode=false, selectedUid=null;
+const homeCanvas = $("#homeCanvas");
+const decoToolbar = $("#decoToolbar");
+
+function itemById(id){
+  for(const s of SEASON_REWARD_TEMPLATES) for(const it of s) if(it.id===id) return it;
+  return null;
+}
+function renderHome(){
+  $all(".deco").forEach(el=>el.remove());
+  if(STATE.home.background){
+    const bgItem = itemById(STATE.home.background);
+    if(bgItem){
+      const el=document.createElement("div");
+      el.className="deco bgLayer"; el.style.left="0"; el.style.top="0";
+      el.style.width="100%"; el.style.height="100%";
+      if(bgItem.img){
+        // 圖片背景：鋪滿整個布置畫布（cover + 置中），不留空白
+        el.style.backgroundImage = `url("${bgItem.img}")`;
+        el.style.backgroundSize = "cover";
+        el.style.backgroundPosition = "center";
+        el.style.backgroundRepeat = "no-repeat";
+      } else {
+        el.style.fontSize="0";
+        el.style.display="flex"; el.style.alignItems="center"; el.style.justifyContent="center";
+        el.innerHTML = `<span style="font-size:120px;opacity:.35">${bgItem.emoji}</span>`;
+      }
+      homeCanvas.insertBefore(el, homeCanvas.firstChild);
+    }
+  }
+  STATE.home.placed.slice().sort((a,b)=>a.z-b.z).forEach(p=>{
+    const item = itemById(p.itemId); if(!item) return;
+    const el=document.createElement("div");
+    el.className="deco"; el.dataset.uid=p.uid;
+    el.style.left=p.x+"px"; el.style.top=p.y+"px";
+    el.style.transform=`scale(${p.scale}) rotate(${p.rotate||0}deg) scaleX(${p.flipped?-1:1})`;
+    if(item.img){
+      const img=document.createElement("img");
+      img.src=item.img; img.alt=item.name; img.className="decoImg";
+      img.draggable=false;
+      el.appendChild(img);
+    } else {
+      el.textContent=item.emoji;
+    }
+    if(p.uid===selectedUid) el.classList.add("selected");
+    homeCanvas.appendChild(el);
+    bindDecoDrag(el,p);
+  });
+  const gp=$("#gramophone"); homeCanvas.appendChild(gp);
+  gp.classList.toggle("playing", AudioSys.isPlaying);
+}
+function clampToCanvas(x,y){
+  const w = homeCanvas.clientWidth || 320, h = homeCanvas.clientHeight || 400;
+  const margin = 16;
+  return [ Math.max(-margin, Math.min(w-margin, x)), Math.max(-margin, Math.min(h-margin, y)) ];
+}
+function bindDecoDrag(el,p){
+  let dragging=false, sx=0, sy=0, ox=0, oy=0;
+  el.addEventListener("pointerdown",(e)=>{
+    if(!editMode) return;
+    e.preventDefault();
+    dragging=true; sx=e.clientX; sy=e.clientY; ox=p.x; oy=p.y;
+    try{ el.setPointerCapture(e.pointerId); }catch(err){}
+    selectDeco(p.uid);
+  });
+  el.addEventListener("pointermove",(e)=>{
+    if(!dragging) return;
+    const [cx,cy] = clampToCanvas(ox+(e.clientX-sx), oy+(e.clientY-sy));
+    p.x = cx; p.y = cy;
+    el.style.left=p.x+"px"; el.style.top=p.y+"px";
+    positionToolbar(el);
+  });
+  function end(){ if(dragging){ dragging=false; scheduleSave(); } }
+  el.addEventListener("pointerup",end);
+  el.addEventListener("pointercancel",end);
+  el.addEventListener("click",()=>{ if(editMode) selectDeco(p.uid); });
+}
+function selectDeco(uid){
+  selectedUid = uid;
+  $all(".deco").forEach(el=>el.classList.toggle("selected", el.dataset.uid===uid));
+  if(uid){
+    const el = homeCanvas.querySelector(`.deco[data-uid="${uid}"]`);
+    if(el){ positionToolbar(el); decoToolbar.style.display="grid"; }
+  } else {
+    decoToolbar.style.display="none";
+  }
+}
+function positionToolbar(el){
+  const r = el.getBoundingClientRect(); const cr = homeCanvas.getBoundingClientRect();
+  const wasHidden = decoToolbar.style.display !== "grid";
+  if(wasHidden){ decoToolbar.style.visibility="hidden"; decoToolbar.style.display="grid"; }
+  const toolbarW = decoToolbar.offsetWidth || 160;
+  if(wasHidden){ decoToolbar.style.display="none"; decoToolbar.style.visibility=""; }
+  decoToolbar.style.left = Math.max(4,Math.min(cr.width-toolbarW-4,r.left-cr.left)) + "px";
+  decoToolbar.style.top = Math.max(4,r.top-cr.top-46) + "px";
+}
+function currentPlaced(){ return STATE.home.placed.find(p=>p.uid===selectedUid); }
+$("#scaleSlider").addEventListener("input",(e)=>{
+  const p=currentPlaced(); if(!p) return;
+  p.scale=parseFloat(e.target.value); renderHome(); scheduleSave();
+  selectDeco(selectedUid);
+});
+decoToolbar.addEventListener("click",(e)=>{
+  const act = e.target.dataset.act; if(!act) return;
+  const p=currentPlaced(); if(!p) return;
+  if(act==="rotR"){ p.rotate = ((p.rotate||0) + 15) % 360; }
+  if(act==="flip"){ p.flipped=!p.flipped; }
+  if(act==="del"){
+    STATE.home.placed = STATE.home.placed.filter(x=>x.uid!==p.uid);
+    selectedUid=null; decoToolbar.style.display="none";
+  }
+  renderHome(); scheduleSave();
+  if(act!=="del") selectDeco(selectedUid);
+});
+homeCanvas.addEventListener("click",(e)=>{
+  if(e.target===homeCanvas){ selectDeco(null); }
+});
+document.addEventListener("click",(e)=>{
+  if(!selectedUid) return;
+  if(e.target.closest("#decoToolbar")) return; // 點在工具框本身（含滑桿/按鈕）不關閉
+  const decoHit = e.target.closest(".deco");
+  if(decoHit && !decoHit.classList.contains("bgLayer")) return; // 點在其他已擺放的裝飾物，交由該物件自己的點擊事件處理選取
+  selectDeco(null); // 其餘畫面空白處（含背景圖層、導覽列等）一律視為空白處，關閉工具框
+});
+$("#homeEditBtn").addEventListener("click",()=>{
+  editMode=!editMode;
+  $("#homeEditBtn").textContent = "布置模式："+(editMode?"開啟":"關閉");
+  homeCanvas.classList.toggle("editing",editMode);
+  if(!editMode){ selectedUid=null; decoToolbar.style.display="none"; renderHome(); }
+});
+$("#gramophone").addEventListener("click",openMusicPicker);
+function openMusicPicker(){
+  AudioSys.unlockOnGesture();
+  renderMusicPanel();
+  $("#musicPanelOverlay").classList.add("show");
+}
+function closeMusicPanel(){
+  $("#musicPanelOverlay").classList.remove("show");
+}
+function renderMusicPanel(){
+  const listEl=$("#musicPanelList"), emptyEl=$("#musicPanelEmpty"), stopBtn=$("#musicPanelStop");
+  const unlocked = STATE.music.unlocked;
+  if(unlocked.length===0){
+    listEl.style.display="none"; emptyEl.style.display="block"; stopBtn.style.display="none";
+    return;
+  }
+  listEl.style.display="flex"; emptyEl.style.display="none";
+  listEl.innerHTML="";
+  unlocked.forEach(id=>{
+    const track = MUSIC_TRACKS[id]; if(!track) return;
+    const isCurrent = STATE.music.current===id;
+    const isPlaying = isCurrent && AudioSys.isPlaying;
+    const row=document.createElement("div");
+    row.className="musicRow"+(isCurrent?" active":"");
+    row.dataset.id=id;
+    row.innerHTML =
+      `<div class="musicRowIcon${isPlaying?" spinning":""}"></div>
+       <div class="musicRowInfo">
+         <div class="musicRowName"></div>
+         <div class="musicRowStatus">${isPlaying?"播放中":isCurrent?"已暫停":"點按播放"}</div>
+       </div>
+       <button class="musicRowBtn${isPlaying?" isPlaying":""}" type="button">${isPlaying?"⏸":"▶"}</button>`;
+    row.querySelector(".musicRowName").textContent = track.name;
+    listEl.appendChild(row);
+  });
+  stopBtn.style.display = STATE.music.current ? "block" : "none";
+}
+$("#musicPanelList").addEventListener("click",(e)=>{
+  const row=e.target.closest(".musicRow"); if(!row) return;
+  const id=row.dataset.id;
+  const isPlaying = STATE.music.current===id && AudioSys.isPlaying;
+  if(isPlaying){
+    AudioSys.pause();
+  } else {
+    STATE.music.current = id;
+    AudioSys.playTrack(id);
+  }
+  scheduleSave(); renderMusicPanel(); renderHome();
+});
+$("#musicPanelStop").addEventListener("click",()=>{
+  AudioSys.stop(); STATE.music.current=null;
+  scheduleSave(); renderMusicPanel(); renderHome();
+});
+$("#musicPanelClose").addEventListener("click", closeMusicPanel);
+$("#musicPanelOverlay").addEventListener("click",(e)=>{
+  if(e.target.id==="musicPanelOverlay") closeMusicPanel();
+});
+
+/* =========================================================
+   DECORATION PICKER PANEL
+========================================================= */
+let decoTab="background";
+function renderDecoPanel(){
+  const tabsEl=$("#decoTabs"); tabsEl.innerHTML="";
+  CATEGORIES.forEach(c=>{
+    const b=document.createElement("button");
+    b.className="decoTab"+(decoTab===c.id?" active":"");
+    b.textContent=c.name;
+    b.addEventListener("click",()=>{ decoTab=c.id; renderDecoPanel(); });
+    tabsEl.appendChild(b);
+  });
+  const gridEl=$("#decoGrid"); gridEl.innerHTML="";
+  const allItems = SEASON_REWARD_TEMPLATES.flat().filter(it=>it.category===decoTab);
+  if(allItems.length===0){ gridEl.innerHTML='<div style="color:var(--sub);font-size:13px;">此分類尚無素材</div>'; return; }
+  allItems.forEach(it=>{
+    const unlocked = STATE.unlockedItems.includes(it.id);
+    const cell=document.createElement("div");
+    cell.className="decoItem"+(unlocked?"":" locked");
+    if(it.img){
+      const img=document.createElement("img");
+      img.src=it.img; img.alt=it.name; img.className="decoItemImg"; img.draggable=false;
+      cell.appendChild(img);
+    } else {
+      cell.textContent=it.emoji;
+    }
+    cell.title=it.name;
+    cell.addEventListener("click",()=>{
+      if(!unlocked){ toast("尚未解鎖："+it.name); return; }
+      if(it.category==="background"){ STATE.home.background = it.id; }
+      else{
+        const [px,py] = clampToCanvas(40+Math.random()*100, 80+Math.random()*140);
+        STATE.home.placed.push({uid:"d"+Date.now()+Math.random().toString(36).slice(2,6),
+          itemId:it.id, x:px, y:py, scale:1, flipped:false, rotate:0, z:STATE.home.placed.length});
+      }
+      scheduleSave(); renderHome(); toast("已放置："+it.name);
+    });
+    gridEl.appendChild(cell);
+  });
+}
+
+/* =========================================================
+   STAGE PANEL
+========================================================= */
+function renderStage(){
+  reconcileStamina(); scheduleSave();
+  $("#stageHpBar").style.width = "100%";
+  const row=$("#staminaRow"); row.innerHTML="";
+  for(let i=0;i<CONFIG.stamina.max;i++){
+    const d=document.createElement("div");
+    d.className="staminaDot"+(i<STATE.stamina.current?" filled":"");
+    row.appendChild(d);
+  }
+  $("#staminaLabel").textContent = `${STATE.stamina.current} / ${CONFIG.stamina.max}`;
+  const startBtn=$("#startBattleBtn");
+  startBtn.disabled = STATE.stamina.current<=0;
+  startBtn.textContent = STATE.stamina.current<=0 ? "次數不足" : "開始";
+}
+$("#startBattleBtn").addEventListener("click",()=>{
+  if(STATE.stamina.current<=0) return;
+  AudioSys.unlockOnGesture();
+  STATE.stamina.current -= 1;
+  if(STATE.stamina.current===CONFIG.stamina.max-1) STATE.stamina.lastTs = Date.now();
+  scheduleSave();
+  startBattle();
+});
+
+/* =========================================================
+   TETRIS ENGINE
+========================================================= */
+const COLS=10, ROWS=20;
+let board, bag=[], nextQueue=[], current=null, cumulativeLines=0, combo=0, maxCombo=0;
+let gravityTimer=null, lockTimer=null, lockResets=0;
+
+function newBoard(){ return Array.from({length:ROWS},()=>Array(COLS).fill(null)); }
+function refillBag(){
+  const b = PIECE_TYPES.slice();
+  for(let i=b.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [b[i],b[j]]=[b[j],b[i]]; }
+  bag.push(...b);
+}
+function drawFromBag(){ if(bag.length===0) refillBag(); return bag.shift(); }
+function ensureQueue(){ while(nextQueue.length<2) nextQueue.push(drawFromBag()); }
+function spawnPiece(type){ return { type, rot:0, x:3, y:-1 }; }
+function cellsOf(piece){
+  const shape = SHAPES[piece.type][piece.rot];
+  const cells=[];
+  for(let r=0;r<4;r++) for(let c=0;c<4;c++) if(shape[r][c]==="X") cells.push([piece.x+c, piece.y+r]);
+  return cells;
+}
+function collides(piece){
+  for(const [x,y] of cellsOf(piece)){
+    if(x<0||x>=COLS||y>=ROWS) return true;
+    if(y>=0 && board[y][x]) return true;
+  }
+  return false;
+}
+function canMoveDown(piece){ const t={...piece,y:piece.y+1}; return !collides(t); }
+function startLockTimer(){
+  clearTimeout(lockTimer);
+  lockTimer = setTimeout(()=>{ lockPiece(); }, CONFIG.lockDelayMs);
+}
+function clearLockTimer(){ if(lockTimer){ clearTimeout(lockTimer); lockTimer=null; } lockResets=0; }
+
+function tryMove(dx,dy){
+  if(!current || battleState.status!=="PLAYING" || battleState.paused) return false;
+  const t={...current,x:current.x+dx,y:current.y+dy};
+  if(collides(t)) return false;
+  current=t;
+  if(!canMoveDown(current)){ if(lockTimer && lockResets<CONFIG.lockMaxResets){ lockResets++; startLockTimer(); } else if(!lockTimer) startLockTimer(); }
+  else clearLockTimer();
+  renderPieceOverlay();
+  return true;
+}
+function tryRotate(){
+  if(!current || battleState.status!=="PLAYING" || battleState.paused) return;
+  const t={...current, rot:(current.rot+1)%4};
+  const kicks=[0,-1,1,-2,2];
+  for(const k of kicks){
+    const tk={...t,x:t.x+k};
+    if(!collides(tk)){
+      current=tk;
+      if(!canMoveDown(current)){ if(lockTimer && lockResets<CONFIG.lockMaxResets){ lockResets++; startLockTimer(); } else if(!lockTimer) startLockTimer(); }
+      else clearLockTimer();
+      renderPieceOverlay(); return;
+    }
+  }
+}
+function hardDrop(){
+  if(!current || battleState.status!=="PLAYING" || battleState.paused) return;
+  let t={...current};
+  while(!collides({...t,y:t.y+1})) t.y++;
+  current=t;
+  clearLockTimer();
+  lockPiece();
+}
+function gravityTick(){
+  if(!current || battleState.status!=="PLAYING" || battleState.paused) return;
+  if(canMoveDown(current)){ current={...current,y:current.y+1}; clearLockTimer(); renderPieceOverlay(); }
+  else { if(!lockTimer) startLockTimer(); }
+}
+
+function lockPiece(){
+  if(!current) return;
+  clearLockTimer();
+  for(const [x,y] of cellsOf(current)){
+    if(y>=0 && y<ROWS && x>=0 && x<COLS) board[y][x]={t:current.type};
+  }
+  AudioSys.sfx("lock");
+  const bombHit = checkBombTouch(current);
+  current=null;
+  if(bombHit!==null) explodeBombRow(bombHit);
+  const cleared = clearFullLines();
+  if(cleared>0){
+    combo++; maxCombo=Math.max(maxCombo,combo);
+    cumulativeLines += cleared;
+    applyDamage(cleared, combo);
+    AudioSys.sfx("clear");
+  } else {
+    combo=0;
+  }
+  renderStaticBoard();
+  if(battleState.status==="PLAYING") spawnNext();
+}
+function checkBombTouch(piece){
+  for(const [x,y] of cellsOf(piece)){
+    const dirs=[[0,1],[0,-1],[1,0],[-1,0]];
+    for(const [dx,dy] of dirs){
+      const ny=y+dy, nx=x+dx;
+      if(ny>=0&&ny<ROWS&&nx>=0&&nx<COLS && board[ny][nx] && board[ny][nx].bomb) return ny;
+    }
+  }
+  return null;
+}
+function explodeBombRow(rowIdx){
+  AudioSys.sfx("bomb");
+  board.splice(rowIdx,1);
+  board.unshift(Array(COLS).fill(null));
+}
+function clearFullLines(){
+  let cleared=0;
+  for(let y=ROWS-1;y>=0;y--){
+    const row=board[y];
+    const full = row.every(c=>c!==null);
+    const hasPlayerCell = row.some(c=>c && !c.garbage && !c.bomb);
+    if(full && hasPlayerCell){
+      board.splice(y,1); board.unshift(Array(COLS).fill(null));
+      cleared++; y++;
+    }
+  }
+  return cleared;
+}
+function applyDamage(lines,comboVal){
+  const base = CONFIG.damage[Math.min(lines,4)] || 0;
+  const mult = Math.min(1 + CONFIG.comboStepPct*(comboVal-1), CONFIG.comboMaxMult);
+  let dmg = Math.floor(base*mult);
+  let newHp = battleState.bossHp - dmg;
+  if(cumulativeLines < CONFIG.minLinesBeforeKill){ newHp = Math.max(newHp, 1); }
+  battleState.bossHp = Math.max(0, newHp);
+  renderBossHp();
+  if(battleState.bossHp<=0){ endBattle(true); }
+}
+function spawnNext(){
+  ensureQueue();
+  const type = nextQueue.shift();
+  ensureQueue();
+  current = spawnPiece(type);
+  if(collides(current)){ endBattle(false); return; }
+  renderPieceOverlay();
+  renderNext();
+}
+
+function pushGarbageRows(n){
+  // Tetris Battle 規則：boss 每次攻擊新增的一排「垃圾列」中，
+  // 只會有「一個」隨機位置的炸彈方塊，其餘皆為一般垃圾方塊（不可單獨用疊滿整排消除，
+  // 需靠玩家消行往上頂，或讓下落的方塊「壓到」炸彈方塊，觸發整排一次清除）。
+  for(let i=0;i<n;i++){
+    board.shift();
+    const bombCol = Math.floor(Math.random()*COLS);
+    const row = Array.from({length:COLS},(_,x)=>
+      x===bombCol ? {t:"bomb",bomb:true} : {t:"garbage",garbage:true}
+    );
+    board.push(row);
+  }
+  renderStaticBoard();
+  if(current){
+    current = {...current, y: current.y - n};
+    if(collides(current)){ endBattle(false); return; }
+  }
+  renderPieceOverlay();
+}
+
+/* =========================================================
+   RENDER: BOARD / NEXT
+   (static board cells and the falling piece overlay are rendered
+   separately so moving/rotating only touches a handful of DOM
+   nodes instead of the whole 200-cell grid every tick)
+========================================================= */
+let boardCells=[];
+let lastPieceCells=[];
+let lastGhostCells=[];
+function buildBoardDom(){
+  const boardEl=$("#board"); boardEl.innerHTML="";
+  boardCells=[]; lastPieceCells=[]; lastGhostCells=[];
+  for(let y=0;y<ROWS;y++){
+    const rowArr=[];
+    for(let x=0;x<COLS;x++){
+      const d=document.createElement("div"); d.className="cell"; boardEl.appendChild(d); rowArr.push(d);
+    }
+    boardCells.push(rowArr);
+  }
+  sizeBoard();
+  renderStaticBoard();
+}
+function sizeBoard(){
+  const wrap = $("#boardWrap"); const boardEl=$("#board");
+  if(!wrap || !boardEl) return;
+  const availW = wrap.clientWidth - 4;
+  const availH = wrap.clientHeight - 4;
+  if(availW<=0 || availH<=0) return;
+  let cell = Math.floor(Math.min(availW/COLS, availH/ROWS));
+  cell = Math.max(10, cell);
+  boardEl.style.width = (cell*COLS)+"px";
+  boardEl.style.height = (cell*ROWS)+"px";
+}
+let resizeDebounce=null;
+window.addEventListener("resize", ()=>{
+  clearTimeout(resizeDebounce);
+  resizeDebounce=setTimeout(()=>{ if(document.getElementById("battleScreen").classList.contains("active")) sizeBoard(); }, 120);
+});
+function renderStaticBoard(){
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      const cell=board[y][x];
+      let cls="cell";
+      if(cell){ cls += cell.bomb ? " piece-bomb" : cell.garbage ? " piece-garbage" : " piece-"+cell.t; }
+      boardCells[y][x].className=cls;
+    }
+  }
+  lastPieceCells=[];
+  lastGhostCells=[];
+}
+function ghostPieceFor(piece){
+  let t={...piece};
+  while(!collides({...t,y:t.y+1})) t.y++;
+  return t;
+}
+function renderPieceOverlay(){
+  for(const [x,y] of lastPieceCells){
+    if(y>=0 && y<ROWS && x>=0 && x<COLS) boardCells[y][x].className="cell";
+  }
+  for(const [x,y] of lastGhostCells){
+    if(y>=0 && y<ROWS && x>=0 && x<COLS) boardCells[y][x].className="cell";
+  }
+  lastPieceCells=[];
+  lastGhostCells=[];
+  if(current){
+    const pieceCells = cellsOf(current);
+    const pieceKeySet = new Set(pieceCells.map(([x,y])=>x+","+y));
+    const ghost = ghostPieceFor(current);
+    for(const [x,y] of cellsOf(ghost)){
+      if(y>=0 && y<ROWS && x>=0 && x<COLS && !pieceKeySet.has(x+","+y)){
+        boardCells[y][x].className="cell piece-"+current.type+" ghost";
+        lastGhostCells.push([x,y]);
+      }
+    }
+    for(const [x,y] of pieceCells){
+      if(y>=0 && y<ROWS && x>=0 && x<COLS){
+        boardCells[y][x].className="cell piece-"+current.type;
+        lastPieceCells.push([x,y]);
+      }
+    }
+  }
+}
+function renderMiniBox(el,type){
+  el.innerHTML="";
+  const shape = type ? SHAPES[type][0] : null;
+  for(let r=0;r<4;r++) for(let c=0;c<4;c++){
+    const d=document.createElement("div");
+    d.className="cell"+((shape&&shape[r][c]==="X")?(" piece-"+type):"");
+    el.appendChild(d);
+  }
+}
+function renderNext(){
+  ensureQueue();
+  renderMiniBox($("#nextBox1"), nextQueue[0]);
+  renderMiniBox($("#nextBox2"), nextQueue[1]);
+}
+function renderBossHp(){
+  const pct = Math.max(0, battleState.bossHp/CONFIG.boss.maxHp*100);
+  const bar=$("#battleHpBar");
+  bar.style.width = pct+"%";
+  bar.style.background = pct<25 ? "linear-gradient(90deg,var(--hp-low),#c33)" :
+    pct<55 ? "linear-gradient(90deg,var(--hp-mid),#c98)" : "linear-gradient(90deg,var(--hp-full),#3fcbb0)";
+  $("#stageHpBar").style.width = "100%";
+}
+
+/* =========================================================
+   BOSS SYSTEM / BATTLE LIFECYCLE
+========================================================= */
+// 只計算「有效遊玩時間」用的時鐘來源：優先用 performance.now()（同一頁面內單調遞增、不受系統時間調整影響），
+// 沒有的環境才退回 Date.now()。這個時鐘只用來算 Clear Time，不影響任何 Battle gameplay。
+function nowPerf(){
+  return (typeof performance !== "undefined" && typeof performance.now === "function") ? performance.now() : Date.now();
+}
+const battleState = { status:"IDLE", paused:false, bossHp:CONFIG.boss.maxHp, attackTimer:null, activeStartTs:0, activeElapsedMs:0, elapsedMs:0, autoPausedByVisibility:false };
+let bossAnimClone=null, bossAnimTimeouts=[];
+
+function startBattle(){
+  board=newBoard(); bag=[]; nextQueue=[]; current=null;
+  cumulativeLines=0; combo=0; maxCombo=0;
+  battleState.status="PLAYING"; battleState.paused=false; battleState.bossHp=CONFIG.boss.maxHp;
+  battleState.activeElapsedMs=0; battleState.activeStartTs=nowPerf(); battleState.elapsedMs=0;
+  battleState.autoPausedByVisibility=false; // 避免延續上一場戰鬥殘留的 flag，造成新戰鬥一開始就誤判成「因背景被自動暫停」
+  buildBoardDom();
+  renderBossHp();
+  $("#resultOverlay").classList.remove("show");
+  $("#gameoverOverlay").classList.remove("show");
+  showScreen("battleScreen");
+  document.getElementById("battleScreen").classList.add("active");
+  sizeBoard();
+  spawnNext();
+  resumeBattleLoop();
+  scheduleBossAttack();
+  STATE.daily.played = true; scheduleSave();
+}
+// 【修正 Clear Time】resume 只在「真的從 paused 狀態恢復」時才重設 activeStartTs，
+// 避免重複呼叫 resumeBattleLoop()（例如 startBattle 內第一次呼叫）造成時間基準被誤重設。
+function resumeBattleLoop(){
+  if(battleState.paused && battleState.status==="PLAYING"){
+    battleState.activeStartTs = nowPerf();
+  }
+  battleState.paused = false;
+  if(gravityTimer) clearInterval(gravityTimer);
+  if(battleState.status==="PLAYING") gravityTimer = setInterval(gravityTick, CONFIG.gravityMs);
+}
+// 【修正 Clear Time】只在「從未暫停→暫停」的那個瞬間才把這段 active 時間累加進 activeElapsedMs，
+// 之後不管是 Boss pause 還是背景切換造成的 pause，重複呼叫都不會重複累加（idempotent）。
+function pauseBattleLoop(){
+  if(!battleState.paused && battleState.status==="PLAYING"){
+    battleState.activeElapsedMs += nowPerf() - battleState.activeStartTs;
+  }
+  battleState.paused = true;
+  if(gravityTimer){ clearInterval(gravityTimer); gravityTimer=null; }
+  clearLockTimer();
+}
+function scheduleBossAttack(){
+  clearBossAttackTimer();
+  battleState.attackTimer = setTimeout(bossAttack, BOSS_DATA.boss001.attackIntervalMs);
+}
+function clearBossAttackTimer(){
+  if(battleState.attackTimer){ clearTimeout(battleState.attackTimer); battleState.attackTimer=null; }
+}
+function bossAttack(){
+  if(battleState.status!=="PLAYING") return;
+  pauseBattleLoop();
+  playBossSkillAnimation(()=>{
+    if(battleState.status==="PLAYING") pushGarbageRows(CONFIG.garbage.rowsPerAttack);
+    if(battleState.status==="PLAYING"){ resumeBattleLoop(); scheduleBossAttack(); }
+  });
+}
+function playBossSkillAnimation(done){
+  const orig = $("#bossImgBattle");
+  const overlay = $("#battlePauseOverlay");
+  if(!orig){ done(); return; }
+  const rect = orig.getBoundingClientRect();
+  const appRect = $("#app").getBoundingClientRect();
+  overlay.style.opacity="1"; overlay.style.pointerEvents="auto";
+  const clone = document.createElement("img");
+  clone.src = orig.src; clone.id="bossAnimClone";
+  Object.assign(clone.style,{
+    position:"fixed", left:rect.left+"px", top:rect.top+"px",
+    width:rect.width+"px", height:rect.height+"px", objectFit:"contain",
+    zIndex:500, pointerEvents:"none",
+    transition:"left .35s ease, top .35s ease, width .35s ease, height .35s ease"
+  });
+  document.body.appendChild(clone);
+  orig.style.visibility="hidden";
+  bossAnimClone = clone;
+  requestAnimationFrame(()=>{
+    const size = Math.min(appRect.width*0.62, 260);
+    const left = appRect.left + (appRect.width-size)/2;
+    const top = appRect.top + (appRect.height-size)/2 - 30;
+    clone.style.left=left+"px"; clone.style.top=top+"px";
+    clone.style.width=size+"px"; clone.style.height=size+"px";
+  });
+  bossAnimTimeouts.push(setTimeout(()=>{
+    clone.classList.add("shakeBoss");
+    bossAnimTimeouts.push(setTimeout(()=>{
+      clone.classList.remove("shakeBoss");
+      clone.style.left=rect.left+"px"; clone.style.top=rect.top+"px";
+      clone.style.width=rect.width+"px"; clone.style.height=rect.height+"px";
+      bossAnimTimeouts.push(setTimeout(()=>{
+        overlay.style.opacity="0"; overlay.style.pointerEvents="none";
+        cleanupBossAnim();
+        done();
+      }, 380));
+    }, 480));
+  }, 380));
+}
+function cleanupBossAnim(){
+  if(bossAnimClone){ bossAnimClone.remove(); bossAnimClone=null; }
+  const orig = $("#bossImgBattle"); if(orig) orig.style.visibility="visible";
+  bossAnimTimeouts.forEach(clearTimeout); bossAnimTimeouts=[];
+  const overlay=$("#battlePauseOverlay");
+  if(overlay){ overlay.style.opacity="0"; overlay.style.pointerEvents="none"; }
+}
+function stopAllBattleTimers(){
+  if(gravityTimer){ clearInterval(gravityTimer); gravityTimer=null; }
+  clearLockTimer();
+  clearBossAttackTimer();
+  cleanupBossAnim();
+  battleState.paused=false;
+}
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden){
+    if(battleState.status==="PLAYING" && !battleState.paused){ pauseBattleLoop(); battleState.autoPausedByVisibility=true; }
+  } else {
+    if(battleState.autoPausedByVisibility){ battleState.autoPausedByVisibility=false; if(battleState.status==="PLAYING") resumeBattleLoop(); }
+  }
+});
+function endBattle(victory){
+  if(battleState.status!=="PLAYING") return;
+  // 【修正 Clear Time】結束當下如果還沒 paused，代表最後這一段 active 時間還沒被計入，
+  // 必須在切換 status（讓後續 visibilitychange 等判斷失效）之前先補上，否則會少算最後一段。
+  if(!battleState.paused){
+    battleState.activeElapsedMs += nowPerf() - battleState.activeStartTs;
+  }
+  battleState.status = victory ? "VICTORY" : "GAME_OVER";
+  stopAllBattleTimers();
+  battleState.elapsedMs = battleState.activeElapsedMs;
+  if(victory){
+    AudioSys.sfx("victory");
+    STATE.stats.totalWins++;
+    if(!STATE.stats.bestTimeMs || battleState.elapsedMs<STATE.stats.bestTimeMs) STATE.stats.bestTimeMs=battleState.elapsedMs;
+    STATE.stats.bestCombo=Math.max(STATE.stats.bestCombo,maxCombo);
+    STATE.daily.cleared = true;
+    STATE.season.wins += 1;
+    scheduleSave();
+    showResult();
+  } else {
+    AudioSys.sfx("gameover");
+    $("#gameoverOverlay").classList.add("show");
+  }
+}
+function fmtTime(ms){
+  // 【修正邊界問題】先把總時間四捨五入到「0.1 秒」為單位的整數，再從這個已經進位過的
+  // 總數換算分鐘/秒/十分位，避免像 59.96 秒被 toFixed(1) 單獨進位成 "60.0" 卻沒有連動進位到分鐘，
+  // 產生不合法的 00:60.0。
+  const totalTenths = Math.max(0, Math.round(ms/100));
+  const m = Math.floor(totalTenths/600);
+  const remTenths = totalTenths - m*600;
+  const s = Math.floor(remTenths/10);
+  const tenths = remTenths%10;
+  return String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")+"."+tenths;
+}
+function showResult(){
+  $("#resultTime").textContent = fmtTime(battleState.elapsedMs);
+  $("#resultCombo").textContent = "×"+maxCombo;
+  $("#resultOverlay").classList.add("show");
+}
+$("#retryBtn").addEventListener("click",()=>retryBattle());
+$("#retryBtn2").addEventListener("click",()=>retryBattle());
+function retryBattle(){
+  if(STATE.stamina.current<=0){ toast("挑戰次數不足"); showScreen("stageScreen"); return; }
+  STATE.stamina.current -= 1;
+  if(STATE.stamina.current===CONFIG.stamina.max-1) STATE.stamina.lastTs=Date.now();
+  scheduleSave();
+  startBattle();
+}
+$("#resultBackBtn").addEventListener("click",()=>{ $("#resultOverlay").classList.remove("show"); showScreen("stageScreen"); });
+$("#resultBackBtn2").addEventListener("click",()=>{ $("#gameoverOverlay").classList.remove("show"); showScreen("stageScreen"); });
+$("#leaveBattleBtn").addEventListener("click",()=>{
+  if(battleState.status!=="PLAYING") return;
+  if(confirm("確定要離開這場對戰嗎？目前進度將不會保留。")){
+    battleState.status="GAME_OVER";
+    stopAllBattleTimers();
+    $("#resultOverlay").classList.remove("show");
+    $("#gameoverOverlay").classList.remove("show");
+    showScreen("stageScreen");
+  }
+});
+
+/* =========================================================
+   INPUT (virtual buttons + keyboard)
+========================================================= */
+function bindHoldRepeat(btn, onTap, {delay=CONFIG.dasDelayMs, repeat=CONFIG.dasRepeatMs}={}){
+  let pid=null, repeatTimer=null, delayTimer=null;
+  function clearTimers(){ clearTimeout(delayTimer); clearInterval(repeatTimer); delayTimer=null; repeatTimer=null; }
+  btn.addEventListener("pointerdown",(e)=>{
+    e.preventDefault();
+    if(pid!==null) return;
+    pid=e.pointerId; btn.setPointerCapture(pid);
+    onTap();
+    delayTimer=setTimeout(()=>{ repeatTimer=setInterval(onTap, repeat); }, delay);
+  });
+  function release(e){
+    if(e && e.pointerId!==pid) return;
+    pid=null; clearTimers();
+  }
+  btn.addEventListener("pointerup",release);
+  btn.addEventListener("pointercancel",release);
+  btn.addEventListener("pointerleave",release);
+}
+bindHoldRepeat($("#btnLeft"), ()=>tryMove(-1,0));
+bindHoldRepeat($("#btnRight"), ()=>tryMove(1,0));
+$("#btnRotate").addEventListener("pointerdown",(e)=>{ e.preventDefault(); tryRotate(); });
+
+(function bindDropButton(){
+  const btn=$("#btnDrop");
+  let pid=null, mode="undetermined", holdTimer=null, softTimer=null;
+  btn.addEventListener("pointerdown",(e)=>{
+    e.preventDefault();
+    if(pid!==null) return;
+    pid=e.pointerId; btn.setPointerCapture(pid); mode="undetermined";
+    holdTimer=setTimeout(()=>{
+      mode="soft";
+      softTimer=setInterval(()=>{ tryMove(0,1); }, CONFIG.softDropMs);
+    }, CONFIG.dropHoldThresholdMs);
+  });
+  function release(e){
+    if(e && e.pointerId!==pid) return;
+    clearTimeout(holdTimer); clearInterval(softTimer); holdTimer=null; softTimer=null;
+    if(mode==="undetermined"){ hardDrop(); }
+    pid=null; mode="undetermined";
+  }
+  btn.addEventListener("pointerup",release);
+  btn.addEventListener("pointercancel",release);
+  btn.addEventListener("pointerleave",release);
+})();
+
+document.addEventListener("keydown",(e)=>{
+  if(!document.getElementById("battleScreen").classList.contains("active")) return;
+  if(battleState.status!=="PLAYING") return;
+  if(e.key==="ArrowLeft") tryMove(-1,0);
+  else if(e.key==="ArrowRight") tryMove(1,0);
+  else if(e.key==="ArrowDown") tryMove(0,1);
+  else if(e.key==="ArrowUp") tryRotate();
+  else if(e.code==="Space"){ e.preventDefault(); hardDrop(); }
+});
+
+/* =========================================================
+   TASK SYSTEM / SEASON SYSTEM / REWARD SYSTEM
+========================================================= */
+function renderTasks(){
+  reconcileDaily(); reconcileSeason(); scheduleSave();
+  const dailyEl=$("#dailyTasks"); dailyEl.innerHTML="";
+  dailyEl.appendChild(taskCard("挑戰一次", STATE.daily.played, STATE.daily.claimPlay, ()=>claimDaily("play")));
+  dailyEl.appendChild(taskCard("通關一次", STATE.daily.cleared, STATE.daily.claimClear, ()=>claimDaily("clear")));
+
+  const startD = new Date(seasonStartTs(STATE.season.index));
+  const endD = new Date(seasonStartTs(STATE.season.index+1));
+  $("#seasonInfo").textContent = `本賽季：${fmtDate(startD)} ～ ${fmtDate(endD)}`;
+
+  const chEl=$("#challengeTasks"); chEl.innerHTML="";
+  CONFIG.challengeGoals.forEach((goal,i)=>{
+    const done = STATE.season.wins>=goal;
+    chEl.appendChild(taskCard(`勝利 ${goal} 次 (${Math.min(STATE.season.wins,goal)}/${goal})`, done, STATE.season.claimed[i], ()=>claimChallenge(i)));
+  });
+
+  const track=$("#rewardTrack"); track.innerHTML="";
+  const rewards = getSeasonRewards(STATE.season.index);
+  const points = STATE.season.points;
+  const maxThreshold = rewards.length ? rewards[rewards.length-1].threshold : 0;
+
+  $("#pointsCurrentVal").textContent = points;
+  $("#pointsProgressBarInner").style.width = (maxThreshold>0 ? Math.min(100, points/maxThreshold*100) : 100) + "%";
+  const nextReward = rewards.find(r=> points < r.threshold);
+  $("#pointsProgressNext").textContent = nextReward
+    ? `距離「${nextReward.name}」還差 ${nextReward.threshold - points} 積分`
+    : "已達成本賽季所有積分獎勵！";
+
+  rewards.forEach(r=>{
+    const unlocked = points >= r.threshold;
+    const claimed = STATE.season.rewardsClaimed.includes(r.id+":"+STATE.season.index);
+    const row=document.createElement("div");
+    row.className="rewardRow"+(unlocked?"":" locked");
+    const threshText = unlocked
+      ? (claimed ? "已領取" : "已達成，可領取")
+      : `還差 ${r.threshold - points} 積分（需要 ${r.threshold} 積分）`;
+    const iconHtml = r.img
+      ? `<img class="rewardEmoji rewardImg" src="${r.img}" alt="${r.name}">`
+      : `<div class="rewardEmoji">${r.emoji}</div>`;
+    row.innerHTML = `${iconHtml}
+      <div class="rewardText"><div>${r.name}</div><div class="rewardThresh">${threshText}</div></div>`;
+    const btn=document.createElement("button");
+    btn.className="claimBtn";
+    btn.textContent = claimed ? "已領取" : "領取";
+    btn.disabled = !unlocked || claimed;
+    btn.addEventListener("click",()=>claimReward(r));
+    row.appendChild(btn);
+    track.appendChild(row);
+  });
+}
+function fmtDate(d){ return `${d.getMonth()+1}/${d.getDate()}`; }
+function taskCard(name,done,claimed,onClaim){
+  const el=document.createElement("div"); el.className="taskCard";
+  el.innerHTML = `<div><div class="taskName">${name}</div><div class="taskSub">${claimed?"已領取":done?"已完成":"進行中"}</div></div>`;
+  const btn=document.createElement("button"); btn.className="claimBtn";
+  btn.textContent = `領取 ${CONFIG.dailyTaskPoints} 積分`;
+  btn.disabled = !done || claimed;
+  btn.addEventListener("click",onClaim);
+  el.appendChild(btn);
+  return el;
+}
+function claimDaily(kind){
+  if(kind==="play" && STATE.daily.played && !STATE.daily.claimPlay){
+    STATE.daily.claimPlay=true; STATE.season.points+=CONFIG.dailyTaskPoints;
+  }
+  if(kind==="clear" && STATE.daily.cleared && !STATE.daily.claimClear){
+    STATE.daily.claimClear=true; STATE.season.points+=CONFIG.dailyTaskPoints;
+  }
+  scheduleSave(); renderTasks(); toast("已領取 10 積分");
+}
+function claimChallenge(i){
+  const goal=CONFIG.challengeGoals[i];
+  if(STATE.season.wins>=goal && !STATE.season.claimed[i]){
+    STATE.season.claimed[i]=true; STATE.season.points+=CONFIG.challengeTaskPoints;
+    scheduleSave(); renderTasks(); toast("已領取 10 積分");
+  }
+}
+function claimReward(r){
+  const key=r.id+":"+STATE.season.index;
+  if(STATE.season.points>=r.threshold && !STATE.season.rewardsClaimed.includes(key)){
+    STATE.season.rewardsClaimed.push(key);
+    // 賽季會循環重複使用同一批物件/背景/音樂模板，這裡用 includes 判斷避免重複塞入陣列造成重複項目
+    const alreadyOwned = STATE.unlockedItems.includes(r.id);
+    if(!alreadyOwned) STATE.unlockedItems.push(r.id);
+    if(r.category==="music" && r.trackId && !STATE.music.unlocked.includes(r.trackId)){
+      STATE.music.unlocked.push(r.trackId);
+    }
+    scheduleSave(); renderTasks();
+    toast(alreadyOwned ? ("已再次領取："+r.name) : ("已解鎖："+r.name));
+  }
+}
+
+/* =========================================================
+   SETTINGS
+========================================================= */
+function renderSettings(){
+  $("#musicVolSlider").value = STATE.music.musicVol;
+  $("#sfxVolSlider").value = STATE.music.sfxVol;
+  $("#musicToggle").classList.toggle("on", STATE.music.musicOn);
+  setUpdateStatus("");
+  refreshVersionLabel();
+}
+$("#musicVolSlider").addEventListener("input",(e)=>{ AudioSys.setMusicVol(parseFloat(e.target.value)); scheduleSave(); });
+$("#sfxVolSlider").addEventListener("input",(e)=>{ AudioSys.setSfxVol(parseFloat(e.target.value)); scheduleSave(); });
+$("#musicToggle").addEventListener("click",()=>{
+  AudioSys.setMusicOn(!STATE.music.musicOn); scheduleSave(); renderSettings();
+});
+$("#updateBtn").addEventListener("click", handleUpdateClick);
+$("#exportBtn").addEventListener("click",()=>{
+  const blob = new Blob([JSON.stringify(STATE,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download="boss_tetris_save.json";
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  toast("已匯出存檔");
+});
+$("#importBtn").addEventListener("click",()=>$("#importFile").click());
+$("#importFile").addEventListener("change",(e)=>{
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const data=JSON.parse(reader.result);
+      STATE = migrate(data);
+      reconcileStamina(); reconcileDaily(); reconcileSeason();
+      scheduleSave();
+      renderHome(); toast("匯入成功");
+    }catch(err){ toast("匯入失敗：檔案格式錯誤"); }
+  };
+  reader.readAsText(file);
+  e.target.value="";
+});
+$("#clearBtn").addEventListener("click",()=>$("#confirmBox").classList.add("show"));
+$("#confirmCancel").addEventListener("click",()=>$("#confirmBox").classList.remove("show"));
+$("#confirmOk").addEventListener("click",async ()=>{
+  STATE = defaultState();
+  reconcileStamina(); reconcileDaily(); reconcileSeason();
+  // 走同一條 Serial Save Queue，避免跟其他正在排隊/進行中的存檔動作互相競速覆蓋。
+  if(saveTimer){ clearTimeout(saveTimer); saveTimer=null; }
+  await enqueueSave(JSON.parse(JSON.stringify(STATE)));
+  AudioSys.stop();
+  $("#confirmBox").classList.remove("show");
+  renderHome(); showScreen("homeScreen");
+  toast("已清除所有資料");
+});
+
+/* =========================================================
+   DEBUG CONSOLE (開發測試用，正式上線前可整段移除)
+   使用方式：打開瀏覽器開發者工具（F12 / 檢查）切到 Console 分頁，輸入：
+     Debug.unlockRound1()       // 積分設為250，並解鎖第一輪所有素材(含音樂)
+     Debug.unlockRound1(500)    // 也可自訂積分數字
+     Debug.addPoints(30)        // 目前賽季積分 +30
+     Debug.state()              // 印出目前完整存檔物件，方便檢查
+   注意：這些操作只會修改本機存檔（IndexedDB），不影響正式的積分/解鎖規則，
+   若要復原，可在「設定」頁按「清除所有資料」。
+========================================================= */
+window.Debug = {
+  unlockRound1(points){
+    if(!STATE){ console.warn("[Debug] 存檔尚未載入完成，請稍後再試"); return; }
+    const p = (typeof points==="number" && !isNaN(points)) ? points : 250;
+    STATE.season.points = p;
+    const round1 = SEASON_REWARD_TEMPLATES[0];
+    round1.forEach(r=>{
+      if(!STATE.unlockedItems.includes(r.id)) STATE.unlockedItems.push(r.id);
+      const key = r.id+":"+STATE.season.index;
+      if(!STATE.season.rewardsClaimed.includes(key)) STATE.season.rewardsClaimed.push(key);
+      if(r.category==="music" && r.trackId && !STATE.music.unlocked.includes(r.trackId)){
+        STATE.music.unlocked.push(r.trackId);
+      }
+    });
+    scheduleSave();
+    renderHome();
+    const stageEl=document.getElementById("stageScreen");
+    const taskEl=document.getElementById("taskScreen");
+    const decoEl=document.getElementById("decoScreen");
+    if(stageEl && stageEl.classList.contains("active")) renderStage();
+    if(taskEl && taskEl.classList.contains("active")) renderTasks();
+    if(decoEl && decoEl.classList.contains("active")) renderDecoPanel();
+    toast("Debug：第一輪素材已全數解鎖，積分="+p);
+    console.log("[Debug] 第一輪素材已解鎖，積分="+p, JSON.parse(JSON.stringify(STATE)));
+  },
+  addPoints(n){
+    if(!STATE){ console.warn("[Debug] 存檔尚未載入完成，請稍後再試"); return; }
+    STATE.season.points += (typeof n==="number"?n:0);
+    scheduleSave();
+    const taskEl=document.getElementById("taskScreen");
+    if(taskEl && taskEl.classList.contains("active")) renderTasks();
+    console.log("[Debug] 目前賽季積分="+STATE.season.points);
+  },
+  state(){
+    if(!STATE){ console.warn("[Debug] 存檔尚未載入完成，請稍後再試"); return null; }
+    const snap = JSON.parse(JSON.stringify(STATE));
+    console.log("[Debug] 目前存檔：", snap);
+    return snap;
+  }
+};
+
+/* =========================================================
+   APP UPDATE（設定頁「更新到最新版本」）
+   設計重點：
+   1) 版本依據＝sw.js 裡的 SW_VERSION 數字常數，不是另外做一套跟它衝突的版號。
+   2) 「目前版本」用 postMessage 直接詢問目前作用中的 Service Worker本人，
+      「最新版本」則用 cache:"reload" 強制略過瀏覽器快取抓一份新的 sw.js 內文解析，
+      這樣才不會被 iOS Safari 對 sw.js 的快取行為騙到，誤判成「沒有新版」。
+   3) 真正的安裝／接管仍然完全交給瀏覽器內建的 Service Worker 生命週期
+      （registration.update() → installing → installed（sw.js 內已呼叫 skipWaiting）
+      → activating → activated → clients.claim() 觸發 controllerchange），
+      絕對不是「呼叫 update 之後就直接 location.reload()」這種不可靠做法。
+   4) 全程不會呼叫任何清除 IndexedDB / localStorage / Cache Storage 的動作；
+      Cache Storage 的舊版清理完全由 sw.js 的 activate 事件自行處理，
+      而且只會刪除「版本號不同的自家App快取」，不會影響玩家存檔。
+   5)【修正】updatefound 與 controllerchange 都必須「先建立監聽，再呼叫 reg.update()」，
+      否則事件可能在監聽器建立之前就已經發生而被錯過，導致誤判成沒有新版本、
+      或是等不到 controllerchange 就以為更新失敗。見 attachUpdateListeners()。
+   6)【修正】按下更新後，第一步一定先 flushSave()，確認目前進度真的寫進 IndexedDB
+      （而不是還停留在 debounce 的 pending 狀態），寫入失敗就直接中止、不進行更新。
+   7)【修正】register() 加上 updateViaCache:"none"，連 sw.js 本身都不透過瀏覽器 HTTP 快取，
+      每次 update() 都是真的打網路要最新內容，避免「看起來更新完成，重開後還是舊版」這種
+      根源其實出在 sw.js 本身被 HTTP 快取住的情況。
+========================================================= */
+let swRegistration = null;
+let updateInProgress = false;
+
+function querySwVersion(worker){
+  return new Promise((resolve)=>{
+    if(!worker){ resolve(null); return; }
+    try{
+      const channel = new MessageChannel();
+      const timer = setTimeout(()=>resolve(null), 3000);
+      channel.port1.onmessage = (e)=>{
+        clearTimeout(timer);
+        resolve(e.data && typeof e.data.version === "number" ? e.data.version : null);
+      };
+      worker.postMessage({type:"GET_VERSION"}, [channel.port2]);
+    }catch(err){ resolve(null); }
+  });
+}
+
+async function fetchLatestSwVersion(){
+  // cache:"reload" 強制向伺服器要一份新的，避免拿到瀏覽器（尤其iOS Safari）快取住的舊 sw.js 內文
+  const res = await fetch("./sw.js?_ts="+Date.now(), {cache:"reload"});
+  if(!res.ok) throw new Error("無法取得 sw.js");
+  const text = await res.text();
+  const m = text.match(/SW_VERSION\s*=\s*(\d+)/);
+  if(!m) throw new Error("sw.js 缺少版本常數");
+  return parseInt(m[1],10);
+}
+
+async function getCurrentServiceWorker(){
+  if(!("serviceWorker" in navigator)) return null;
+  const reg = swRegistration || await navigator.serviceWorker.getRegistration();
+  return (reg && (reg.active || reg.waiting || reg.installing)) || navigator.serviceWorker.controller || null;
+}
+
+async function refreshVersionLabel(){
+  const label = $("#appVersionLabel");
+  if(!label) return;
+  if(!("serviceWorker" in navigator)){ label.textContent="不支援自動更新"; return; }
+  const v = await querySwVersion(await getCurrentServiceWorker());
+  label.textContent = (v!=null) ? ("v"+v) : "—";
+}
+
+function setUpdateStatus(msg){
+  const el = $("#updateStatusText");
+  if(el) el.textContent = msg || "";
+}
+
+// 幫任何 Promise 加上 timeout，逾時就 resolve(timeoutValue)，而不是掛著不動或直接判定失敗。
+// 逾時之後原本的 promise 若真的完成，也只是被忽略，不會造成例外。
+function withTimeout(promise, timeoutMs, timeoutValue){
+  return new Promise((resolve)=>{
+    let done=false;
+    const timer = setTimeout(()=>{ if(!done){ done=true; resolve(timeoutValue); } }, timeoutMs);
+    promise.then((v)=>{ if(!done){ done=true; clearTimeout(timer); resolve(v); } },
+                 ()=>{ if(!done){ done=true; clearTimeout(timer); resolve(timeoutValue); } });
+  });
+}
+
+// 【修正 updatefound race condition】
+// 必須在呼叫 reg.update() 之前就呼叫這個函式，把 updatefound 與 controllerchange
+// 的監聽都建立好，才不會因為「事件先發生、監聽後建立」而錯過。
+// 如果 updatefound 在監聽建立前就已經發生，reg.installing / reg.waiting 會反映出目前狀態，
+// 這裡一開始就會先檢查一次，兩邊互相補強。
+function attachUpdateListeners(reg){
+  const prevController = navigator.serviceWorker.controller;
+
+  const workerFoundPromise = new Promise((resolve)=>{
+    // updatefound 發生前，新版本有可能已經在 installing（例如上一次呼叫留下的狀態），先檢查一次。
+    if(reg.installing){ resolve(reg.installing); return; }
+    function onFound(){
+      reg.removeEventListener("updatefound", onFound);
+      resolve(reg.installing);
+    }
+    reg.addEventListener("updatefound", onFound);
+  });
+
+  // 【修正 controllerchange race condition】
+  // 在 reg.update() 之前就建立好這個監聽，避免新版 SW 的 clients.claim()
+  // 觸發 controllerchange 的時間點早於我們開始等待的時間點而被錯過。
+  const controllerChangePromise = new Promise((resolve)=>{
+    function onChange(){
+      navigator.serviceWorker.removeEventListener("controllerchange", onChange);
+      resolve();
+    }
+    navigator.serviceWorker.addEventListener("controllerchange", onChange);
+  });
+
+  return { prevController, workerFoundPromise, controllerChangePromise };
+}
+
+function waitForWorkerActivated(worker, timeoutMs){
+  return new Promise((resolve,reject)=>{
+    if(worker.state === "activated"){ resolve(); return; }
+    if(worker.state === "redundant"){ reject(new Error("新版本安裝失敗")); return; }
+    const timer = setTimeout(()=>{ worker.removeEventListener("statechange", onChange); reject(new Error("安裝逾時")); }, timeoutMs);
+    function onChange(){
+      if(worker.state === "activated"){ clearTimeout(timer); worker.removeEventListener("statechange", onChange); resolve(); }
+      else if(worker.state === "redundant"){ clearTimeout(timer); worker.removeEventListener("statechange", onChange); reject(new Error("新版本安裝失敗")); }
+    }
+    worker.addEventListener("statechange", onChange);
+  });
+}
+
+async function handleUpdateClick(){
+  if(updateInProgress) return; // 【修正重複點擊】同一時間只允許一次更新流程
+  const btn = $("#updateBtn");
+  if(!("serviceWorker" in navigator)){ toast("此瀏覽器不支援自動更新"); return; }
+  updateInProgress = true;
+  btn.disabled = true;
+  setUpdateStatus("正在檢查更新…");
+  try{
+    // 【P0】updateViaCache:"none" 明確要求瀏覽器連 sw.js 本身都不要用 HTTP 快取，
+    // 每次 register()/update() 都直接打網路拿最新內容，避免被伺服器或瀏覽器對 sw.js 的
+    // HTTP 快取行為騙到，造成「明明按了更新，實際上瀏覽器內部還是用舊的 sw.js 內容在比對」。
+    const reg = swRegistration || await navigator.serviceWorker.register("./sw.js", {updateViaCache:"none"});
+    swRegistration = reg;
+    const currentWorker = (reg.active || reg.waiting || reg.installing) || navigator.serviceWorker.controller || null;
+    const [currentVersion, latestVersion] = await Promise.all([
+      querySwVersion(currentWorker),
+      fetchLatestSwVersion()
+    ]);
+    if(currentVersion != null && latestVersion <= currentVersion){
+      setUpdateStatus("目前已是最新版本");
+      toast("目前已是最新版本");
+      return;
+    }
+
+    // 【修正】更新前一定要先確保目前進度已經完整寫入 IndexedDB，
+    // 而不是單純呼叫 scheduleSave() 就繼續往下走。寫入失敗就直接中止，保留舊版繼續運作。
+    setUpdateStatus("正在儲存目前進度…");
+    const saved = await flushSave();
+    if(!saved){
+      setUpdateStatus("更新失敗，已保留目前版本");
+      toast("儲存進度失敗，已取消更新");
+      return;
+    }
+
+    // 【修正 race condition 的關鍵】：一定要在 reg.update() 之前就建立好
+    // updatefound 與 controllerchange 的監聽，不能依賴「事件一定會在監聽建立之後才發生」。
+    const { prevController, workerFoundPromise, controllerChangePromise } = attachUpdateListeners(reg);
+
+    setUpdateStatus("正在檢查更新…");
+    await reg.update(); // 真正觸發瀏覽器檢查並安裝新版 Service Worker，不是只重整頁面
+
+    // workerFoundPromise 在建立當下就已經檢查過 reg.installing；
+    // 這裡逾時後再補查一次 reg.waiting / reg.installing，避免任何時間差造成誤判。
+    let newWorker = await withTimeout(workerFoundPromise, 8000, null);
+    if(!newWorker) newWorker = reg.waiting || reg.installing || null;
+
+    if(!newWorker){
+      // 沒偵測到新版本開始安裝：內容其實沒變，或本次暫時無法檢查，保留目前可用的版本
+      setUpdateStatus("目前已是最新版本");
+      toast("目前已是最新版本");
+      return;
+    }
+
+    // 【P0 正確處理 waiting Service Worker】sw.js 的 install 事件本身已經會呼叫 skipWaiting()，
+    // 正常情況下新版會自己很快從 installed 轉成 activating，不會卡在 waiting。
+    // 這裡仍主動補發一次 SKIP_WAITING 訊息作為保險（sw.js 的 message handler 已支援、且重複收到也不會有副作用），
+    // 避免任何原因造成新版卡在 installed/waiting 遲遲不進入 activate。
+    if(newWorker.state === "installed" || newWorker.state === "waiting"){
+      try{ newWorker.postMessage({type:"SKIP_WAITING"}); }catch(e){ /* 忽略：非致命，activate 仍會照常等待/重試 */ }
+    }
+
+    setUpdateStatus("正在套用新版本…");
+    await waitForWorkerActivated(newWorker, 15000); // install → activate（sw.js 內已呼叫 skipWaiting）
+
+    setUpdateStatus("正在套用新版本…");
+    // controllerChangePromise 早在 reg.update() 之前就已經在監聽，
+    // 所以就算新版 activate 後的 clients.claim() 很快觸發 controllerchange，也不會被錯過。
+    await withTimeout(controllerChangePromise, 6000, null);
+
+    // 不管 controllerchange 是否在時間內發生，reload 前都再次「確認」新版真的接管了，
+    // 逾時不代表更新失敗，也不代表更新成功——一律以目前 controller 是否真的換掉舊的為準。
+    const controllerSwitched = ()=> navigator.serviceWorker.controller && navigator.serviceWorker.controller !== prevController;
+    if(!controllerSwitched()){
+      await withTimeout(new Promise((resolve)=>{
+        (function poll(){
+          if(controllerSwitched()) resolve();
+          else setTimeout(poll, 200);
+        })();
+      }), 3000, null);
+    }
+
+    if(!controllerSwitched()){
+      // 新版 Service Worker 尚未真正接管此頁面：不能假裝更新成功，也不能 reload，
+      // 保留目前舊版繼續運作，讓使用者之後再試一次。
+      setUpdateStatus("更新失敗，已保留目前版本");
+      toast("更新失敗，已保留目前版本");
+      return;
+    }
+
+    setUpdateStatus("更新完成，正在重新載入…");
+    location.reload();
+  }catch(err){
+    console.warn("[update] failed:", err);
+    setUpdateStatus("更新失敗，已保留目前版本");
+    toast("更新失敗，已保留目前版本");
+  }finally{
+    updateInProgress = false;
+    btn.disabled = false;
+  }
+}
+
+/* =========================================================
+   PERIODIC RECONCILE (stamina / season / daily rollover while app open)
+========================================================= */
+setInterval(()=>{
+  reconcileStamina(); reconcileDaily(); reconcileSeason();
+  if(document.getElementById("stageScreen").classList.contains("active")) renderStage();
+  scheduleSave();
+}, 15000);
+
+/* =========================================================
+   BOOT
+========================================================= */
+document.addEventListener("pointerdown", AudioSys.unlockOnGesture, {once:false});
+if("serviceWorker" in navigator){
+  window.addEventListener("load", async ()=>{
+    try{ swRegistration = await navigator.serviceWorker.register("./sw.js", {updateViaCache:"none"}); }
+    catch(e){ /* 離線或環境不支援時，App 仍可正常使用，只是沒有離線快取／自動更新而已 */ }
+  });
+}
+(async function boot(){
+  await loadState();
+  renderHome();
+  showScreen("homeScreen");
+})();
+
+})();
+</script>
+</body>
+</html>
