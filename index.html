@@ -712,7 +712,8 @@ const SEASON_REWARD_TEMPLATES = [
     {id:"food_r6", name:"金黃薯條", category:"food",
       img:"https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/emoji_u1f35f.png", threshold:150},
     {id:"char_r6", name:"Marsh", category:"character",
-      img:"https://raw.githubusercontent.com/paulie0102-Bear/farm/refs/heads/main/member/MARSH.gif", threshold:200}
+      img:"https://raw.githubusercontent.com/paulie0102-Bear/farm/refs/heads/main/member/MARSH.gif", threshold:200},
+    {id:"music_r6", name:"소연 (SOYEON) 퇴사할게여 (Narr. 기안84)", category:"music", trackId:"track_r6", threshold:250}
   ],
   [ // 第7輪
     {id:"bg_r7", name:"願者上鉤", category:"background",
@@ -1891,8 +1892,8 @@ function renderTasks(){
       ? (claimed ? "已領取" : "已達成，可領取")
       : `還差 ${r.threshold - points} 積分（需要 ${r.threshold} 積分）`;
     const iconHtml = r.img
-      ? `<img class="rewardEmoji rewardImg" src="${r.img}" alt="${r.name}">`
-      : `<div class="rewardEmoji">${r.emoji}</div>`;
+  ? `<img class="rewardEmoji rewardImg" src="${r.img}" alt="${r.name}">`
+  : `<div class="rewardEmoji">${r.emoji || "🎁"}</div>`;
     row.innerHTML = `${iconHtml}
       <div class="rewardText"><div>${r.name}</div><div class="rewardThresh">${threshText}</div></div>`;
     const btn=document.createElement("button");
