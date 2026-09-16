@@ -128,7 +128,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
 #board{display:grid; grid-template-columns:repeat(10,1fr); grid-template-rows:repeat(20,1fr);
   background:var(--deep); border:2px solid var(--deepline); border-radius:6px; overflow:hidden; flex-shrink:0;}
 .cell{border:1px solid rgba(255,255,255,.04); box-sizing:border-box;}
-.controls{display:flex; padding:8px 2px 4px; gap:8px; flex-shrink:0;}
+.controls{display:flex; padding:8px 2px 4px; gap:16px; flex-shrink:0;}
 .ctrlBtn{flex:1; background:var(--panel); border:1px solid var(--line); border-radius:14px;
   color:var(--text); font-size:22px; height:58px; display:flex; align-items:center; justify-content:center;
   touch-action:none;}
@@ -345,8 +345,8 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
         <div id="boardWrap"><div id="board"></div></div>
         <div class="controls">
           <button class="ctrlBtn" id="btnLeft">◀</button>
-          <button class="ctrlBtn" id="btnDrop">▼</button>
           <button class="ctrlBtn" id="btnRight">▶</button>
+          <button class="ctrlBtn" id="btnDrop">▼</button>
           <button class="ctrlBtn" id="btnRotate">↻</button>
         </div>
       </div>
@@ -625,7 +625,8 @@ const MUSIC_TRACKS = {
   track_r2: { name:"如果可以",     url:"https://paulie0102-bear.github.io/garden/music/2.mp3" },
   track_r3: { name:"總有一工",     url:"https://paulie0102-bear.github.io/garden/music/10.mp3" },
   track_r4: { name:"絕地花園",     url:"https://paulie0102-bear.github.io/garden/music/14.mp3" },
-  track_r5: { name:"披星戴月的想你", url:"https://paulie0102-bear.github.io/garden/music/15.mp3" }
+  track_r5: { name:"披星戴月的想你", url:"https://paulie0102-bear.github.io/garden/music/15.mp3" },
+  track_r6: { name:"소연 (SOYEON) 퇴사할게여 (Narr. 기안84)", url:"https://paulie0102-bear.github.io/catch/music/6.mp3" }
   // 新增音樂範例：
   // newTrack: { name:"新歌名稱", url:"https://raw.githubusercontent.com/你的帳號/你的repo/refs/heads/main/music/newTrack.mp3" }
 };
