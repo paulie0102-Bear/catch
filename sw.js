@@ -4,7 +4,7 @@
    1) 「更新到最新版本」按鈕會直接讀取這個數字來判斷新舊版本
    2) activate 時也會依照這個數字產生的 CACHE_NAME 清掉舊版快取
    千萬不要拿掉這行常數定義或改成非數字，頁面端是用正規表示式解析這個數字。 */
-const SW_VERSION = 4;
+const SW_VERSION = 5;
 const CACHE_NAME = "boss-tetris-v" + SW_VERSION;
 
 const APP_SHELL = [
